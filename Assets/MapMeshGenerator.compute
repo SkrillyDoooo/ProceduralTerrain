@@ -3,7 +3,6 @@
 #include "Assets/AnimationCurveComputeExtension.compute"
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
-RWTexture2D<float4> Result;
 Texture2D<float4> HeightMap;
 
 RWStructuredBuffer<float3> MeshVerticies;
@@ -19,9 +18,9 @@ int Height;
 float Multiplier;
 int CurveLength;
 
-//Not really global
-int VerticesPerLine;
-int SimplificationIncrement;
+// local settings
+StructuredBuffer<int> VerticesPerLine;
+StructuredBuffer<int> SimplificationIncrement;
 
 
 void AddTriangle(int a, int b, int c, int triIndex)
@@ -38,8 +37,8 @@ void CSGenerateMesh(uint id : SV_DispatchThreadID)
     float topLeftZ = (Height - 1) / 2.0f;
     int triIndex = 0;
 
-    for (int y = 0, vi = 0; y < Height; y += SimplificationIncrement) {
-        for (int x = 0; x < Width; x += SimplificationIncrement, vi++)
+    for (int y = 0, vi = 0; y < Height; y += SimplificationIncrement[0]) {
+        for (int x = 0; x < Width; x += SimplificationIncrement[0], vi++)
         {
             int2 pos = int2(x, y);
             float4 s = HeightMap[pos.xy];
@@ -50,9 +49,9 @@ void CSGenerateMesh(uint id : SV_DispatchThreadID)
             //TODO:: Optimize this branch out. Fence post issue
             if (x < Width - 1 && y < Height - 1)
             {
-                AddTriangle(vi, vi + VerticesPerLine + 1, vi + VerticesPerLine, triIndex);
+                AddTriangle(vi, vi + VerticesPerLine[0] + 1, vi + VerticesPerLine[0], triIndex);
                 triIndex += 3;
-                AddTriangle(vi + VerticesPerLine + 1, vi, vi + 1, triIndex);
+                AddTriangle(vi + VerticesPerLine[0] + 1, vi, vi + 1, triIndex);
                 triIndex += 3;
             }
         }

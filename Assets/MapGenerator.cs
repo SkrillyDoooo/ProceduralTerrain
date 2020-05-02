@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
+using System.Threading;
 
 public class MapGenerator : MonoBehaviour
 {
@@ -24,10 +26,10 @@ public class MapGenerator : MonoBehaviour
     public int seed = 1;
     public Vector2 offset = Vector2.zero;
 
-    const int mapChunkSize = 241;
+    public const int mapChunkSize = 241;
 
     [Range(0,6)]
-    public int levelOfDetail;
+    public int editorPreviewLevelOfDetail;
 
     public bool autoUpdate = true;
 
@@ -39,29 +41,84 @@ public class MapGenerator : MonoBehaviour
     public float meshHeightMultiplier;
     public AnimationCurve heightMapCurve;
 
-    public void GenerateMap()
+    Queue<MapThreadInfo<MapData>> mapDataThreadInfoQueue = new Queue<MapThreadInfo<MapData>>();
+    Queue<MapThreadInfo<MeshData>> meshDataThreadInfoQueue = new Queue<MapThreadInfo<MeshData>>();
+ 
+    public void DrawMapInEditor()
     {
-        float[,] noiseMap = Noise.GenerateNoiseMap(mapChunkSize, mapChunkSize, seed, noiseScale, octaves, persistance, lacunarity, offset);
-
+        MapData mapData = GenerateMapData();
         MapDisplay mapDisplay = GetComponent<MapDisplay>();
         if (mapDisplay == null)
             Debug.LogError("MapDisplay component not found.");
 
-        switch(drawMode)
+        switch (drawMode)
         {
             case DrawMode.Noise:
-                mapDisplay.DrawTexture(TextureGenerator.TextureFromHeightMap(noiseMap), true);
+                mapDisplay.DrawTexture(TextureGenerator.TextureFromHeightMap(mapData.heightMap), true);
                 break;
             case DrawMode.Color:
-
-                mapDisplay.DrawTexture(TextureGenerator.TextureFromColorMap(ConvertHeightMapToColorMap(noiseMap), mapChunkSize, mapChunkSize), true);
+                mapDisplay.DrawTexture(TextureGenerator.TextureFromColorMap(mapData.colorMap, mapChunkSize, mapChunkSize), true);
                 break;
             case DrawMode.MeshAndColor:
-                Color[] color = ConvertHeightMapToColorMap(noiseMap);
-                mapDisplay.DrawMesh(MapMeshGenerator.GenerateMesh(noiseMap, meshHeightMultiplier, heightMapCurve, levelOfDetail,  shader), TextureGenerator.TextureFromColorMap(ConvertHeightMapToColorMap(noiseMap), mapChunkSize, mapChunkSize));
+                mapDisplay.DrawMesh(MapMeshGenerator.GenerateMesh(mapData.heightMap, meshHeightMultiplier, heightMapCurve, editorPreviewLevelOfDetail, shader), TextureGenerator.TextureFromColorMap(mapData.colorMap, mapChunkSize, mapChunkSize));
                 break;
 
         }
+    }
+
+    public void RequestMapData(Action<MapData> callback)
+    {
+        ThreadStart threadStart = delegate
+        {
+            MapDataThread(callback);
+        };
+
+        new Thread(threadStart).Start();
+    }
+    
+    void MapDataThread(Action<MapData> callback)
+    {
+        MapData mapData = GenerateMapData();
+        lock (mapDataThreadInfoQueue)
+        {
+            mapDataThreadInfoQueue.Enqueue(new MapThreadInfo<MapData>(callback, mapData));
+        }
+    }
+
+    // two different approached to threading / async here. above in RequestMapData we dispatch to another thread. here generate mesh handles the callback 
+    // and employs an async gpu read to get data from the compute shader
+    public void RequestMeshData(MapData mapData, int lod, Action<MeshData> callback)
+    {
+        MapMeshGenerator.GenerateMeshAsync(mapData.heightMap, meshHeightMultiplier, heightMapCurve, lod, shader, callback);
+    }
+
+    private void Update()
+    {
+        if(mapDataThreadInfoQueue.Count > 0)
+        {
+            for (int i = 0; i < mapDataThreadInfoQueue.Count; i++)
+            {
+                MapThreadInfo<MapData> threadInfo = mapDataThreadInfoQueue.Dequeue();
+                threadInfo.callback(threadInfo.parameter);
+            }
+        }
+
+        if(meshDataThreadInfoQueue.Count > 0)
+        {
+            for(int i = 0; i < meshDataThreadInfoQueue.Count; i++)
+            {
+                MapThreadInfo<MeshData> threadInfo = meshDataThreadInfoQueue.Dequeue();
+                threadInfo.callback(threadInfo.parameter);
+            }
+        }
+
+    }
+
+    private MapData GenerateMapData()
+    {
+        float[,] noiseMap = Noise.GenerateNoiseMap(mapChunkSize, mapChunkSize, seed, noiseScale, octaves, persistance, lacunarity, offset);
+        Color[] colorMap = ConvertHeightMapToColorMap(noiseMap);
+        return new MapData(noiseMap, colorMap);
     }
 
     private Color[] ConvertHeightMapToColorMap(float [,] noiseMap)
@@ -96,6 +153,18 @@ public class MapGenerator : MonoBehaviour
             octaves = 0;
         }
     }
+
+    struct MapThreadInfo<T>
+    {
+        public readonly Action<T> callback;
+        public readonly T parameter;
+
+        public MapThreadInfo(Action<T> callback, T parameter)
+        {
+            this.callback = callback;
+            this.parameter = parameter;
+        }
+    }
 }
 
 [System.Serializable]
@@ -104,4 +173,16 @@ public struct TerrainType
     public string name;
     public float height;
     public Color color;
+}
+
+public struct MapData
+{
+    public readonly float[,] heightMap;
+    public readonly Color[] colorMap;
+
+    public MapData(float[,] heightMaps, Color[] colorMap)
+    {
+        this.heightMap = heightMaps;
+        this.colorMap = colorMap;
+    }
 }
