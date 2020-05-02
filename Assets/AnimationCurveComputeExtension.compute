@@ -1,0 +1,5 @@
+﻿float EvaluateCurve(StructuredBuffer<float> curve,  float v, int curveLength)
+{
+    v = clamp(v, 0.0f, 1.0f);
+    return curve[floor(v * curveLength)];
+}

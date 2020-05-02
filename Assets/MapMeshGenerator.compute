@@ -1,0 +1,60 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSGenerateMesh
+#include "Assets/AnimationCurveComputeExtension.compute"
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+Texture2D<float4> HeightMap;
+
+RWStructuredBuffer<float3> MeshVerticies;
+RWStructuredBuffer<float4> Colors;
+RWStructuredBuffer<float2> UVs;
+
+RWStructuredBuffer<int> Triangles;
+RWStructuredBuffer<int2> Poses;
+StructuredBuffer<float> Curve;
+
+int Width;
+int Height;
+float Multiplier;
+int CurveLength;
+
+//Not really global
+int VerticesPerLine;
+int SimplificationIncrement;
+
+
+void AddTriangle(int a, int b, int c, int triIndex)
+{
+    Triangles[triIndex] = a;
+    Triangles[triIndex + 1] = b;
+    Triangles[triIndex + 2] = c;
+}
+
+[numthreads(1,1,1)]
+void CSGenerateMesh(uint id : SV_DispatchThreadID)
+{
+    float topLeftX = (Width - 1) / -2.0f;
+    float topLeftZ = (Height - 1) / 2.0f;
+    int triIndex = 0;
+
+    for (int y = 0, vi = 0; y < Height; y += SimplificationIncrement) {
+        for (int x = 0; x < Width; x += SimplificationIncrement, vi++)
+        {
+            int2 pos = int2(x, y);
+            float4 s = HeightMap[pos.xy];
+            MeshVerticies[vi] = float3(topLeftX + x, s.r * Multiplier * EvaluateCurve(Curve, s.r, CurveLength), topLeftZ - y);
+            UVs[vi] = float2(x / (float)Width, y / (float)Height);
+
+
+            //TODO:: Optimize this branch out. Fence post issue
+            if (x < Width - 1 && y < Height - 1)
+            {
+                AddTriangle(vi, vi + VerticesPerLine + 1, vi + VerticesPerLine, triIndex);
+                triIndex += 3;
+                AddTriangle(vi + VerticesPerLine + 1, vi, vi + 1, triIndex);
+                triIndex += 3;
+            }
+        }
+    }
+}
