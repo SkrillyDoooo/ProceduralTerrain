@@ -1,0 +1,2 @@
+## Terrain Generator
+A procedural terrain genarator adapted from Sebastian Lague's [Youtube tutorial series](https://www.youtube.com/watch?v=wbpMiKiSKm8) to use a compute shader for mesh generation, lod switching and seams
