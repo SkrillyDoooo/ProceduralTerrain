@@ -5,6 +5,10 @@ using UnityEngine;
 
 public class TileManager : MonoBehaviour
 {
+
+    const float viewerMoveThresholdForChunkUpdate = 25f;
+    const float sqrViewerMoveThresholdForChunkUpdate = viewerMoveThresholdForChunkUpdate * viewerMoveThresholdForChunkUpdate;
+
     public LODInfo[] detailLevels;
     public static float maxViewDist = 450;
 
@@ -12,6 +16,7 @@ public class TileManager : MonoBehaviour
     public Material mapMaterial;
 
     public static Vector2 viewerPos;
+    public static Vector2 viewerPositionOld;
     static MapGenerator mapGenerator;
 
     int chunkSize;
@@ -30,13 +35,20 @@ public class TileManager : MonoBehaviour
         m_ParentObjectEditorOnly = new GameObject("Map Generator (Editor Only)");
         m_ParentObjectEditorOnly.transform.position = Vector3.zero;
         maxViewDist = detailLevels[detailLevels.Length - 1].visibleDistanceThreshold;
+        
+        UpdateVisibleChunks();
     }
 
     // Update is called once per frame
     void Update()
     {
         viewerPos = new Vector2(viewer.position.x, viewer.position.z);
-        UpdateVisibleChunks();
+
+        if((viewerPositionOld - viewerPos).sqrMagnitude > sqrViewerMoveThresholdForChunkUpdate)
+        {
+            viewerPositionOld = viewerPos;
+            UpdateVisibleChunks();
+        }
     }
 
     void UpdateVisibleChunks()
@@ -106,12 +118,12 @@ public class TileManager : MonoBehaviour
             meshObject.transform.parent = m_ParentObjectEditorOnly.transform;
 #endif
             SetVisible(false);
-            mapGenerator.RequestMapData(OnMapDataReceived);
+            mapGenerator.RequestMapData(position, OnMapDataReceived);
 
             LODMeshes = new LODMesh[detailLevels.Length];
             for (int i = 0; i < detailLevels.Length; i++)
             {
-                LODMeshes[i] = new LODMesh(detailLevels[i].lod);
+                LODMeshes[i] = new LODMesh(detailLevels[i].lod, UpdateTerrainChunk);
             }
         }
 
@@ -119,6 +131,10 @@ public class TileManager : MonoBehaviour
         {
             this.mapData = mapData;
             mapDataRecieved = true;
+
+            Texture2D texture = TextureGenerator.TextureFromColorMap(mapData.colorMap, MapGenerator.mapChunkSize, MapGenerator.mapChunkSize);
+            meshRenderer.material.mainTexture = texture;
+            UpdateTerrainChunk();
         }
 
         void OnMeshDataReceived(MeshData meshData)
@@ -184,16 +200,19 @@ public class TileManager : MonoBehaviour
         public bool hasRequestedMesh;
         public bool hasMesh;
         public int lod;
+        System.Action updateCallback;
 
-        public LODMesh(int lod)
+        public LODMesh(int lod, System.Action updateCallback)
         {
             this.lod = lod;
+            this.updateCallback = updateCallback;
         }
 
         void OnMeshDataReceived(MeshData meshData)
         {
             mesh = meshData.CreateMesh();
             hasMesh = true;
+            updateCallback ();
         }
         public void RequestMesh(MapData mapData)
         {
