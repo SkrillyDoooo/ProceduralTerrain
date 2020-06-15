@@ -7,148 +7,115 @@ using UnityEngine.Rendering;
 
 public static class MapMeshGenerator
 {
-    public static MeshData GenerateMesh(float[,] heightMap, float heightMultiplier, AnimationCurve meshHeightCurve, int levelOfDetail)
+    public static MeshData GenerateMesh(float[,] heightMap, MeshSettings meshSettings, int levelOfDetail)
     {
-        AnimationCurve curve = new AnimationCurve(meshHeightCurve.keys);
-        int width = heightMap.GetLength(0);
-        int height = heightMap.GetLength(1);
-
-        float topLeftX = (width - 1) / -2.0f;
-        float topLeftZ = (height - 1) / 2.0f;
-
-
         int meshSimplificationIncrement = (levelOfDetail == 0) ? 1 : levelOfDetail * 2;
-        int verticiesPerLine = (width - 1) / meshSimplificationIncrement + 1;
 
-        MeshData meshData = new MeshData(width, height);
+        int borderedSize = heightMap.GetLength(0);
+        int meshSize = borderedSize - 2 * meshSimplificationIncrement;
+        int meshSizeUnsimplified = borderedSize - 2;
 
-        for(int y = 0, vi = 0 ;  y < height; y+= meshSimplificationIncrement)
+        float topLeftX = (meshSizeUnsimplified - 1) / -2.0f;
+        float topLeftZ = (meshSizeUnsimplified - 1) / 2.0f;
+
+
+        int verticiesPerLine = (meshSize - 1) / meshSimplificationIncrement + 1;
+
+        MeshData meshData = new MeshData(verticiesPerLine, meshSettings.useFlatShading);
+
+        int[,] vertexIndiciesMap = new int[borderedSize, borderedSize];
+        int meshVertexIndex = 0;
+        int borderVertexIndex = -1;
+
+        for (int y = 0; y < borderedSize; y += meshSimplificationIncrement)
         {
-            for(int x = 0; x < width; x+= meshSimplificationIncrement, vi++)
+            for (int x = 0; x < borderedSize; x += meshSimplificationIncrement)
             {
-                meshData.vertices[vi] = new Vector3(topLeftX + x, curve.Evaluate(heightMap[x, y]) * heightMultiplier, topLeftZ - y);
-                meshData.uvs[vi] = new Vector2(x / (float)width, y / (float)height);
+                bool isBorderVertex = y == 0 || y == borderedSize - 1 || x == 0 || x == borderedSize - 1;
 
-                if(x < width - 1 && y < height - 1)
+                if(isBorderVertex)
                 {
-                    meshData.AddTriangle(vi, vi + verticiesPerLine + 1, vi + verticiesPerLine);
-                    meshData.AddTriangle(vi + verticiesPerLine + 1, vi, vi + 1);
+                    vertexIndiciesMap[x, y] = borderVertexIndex;
+                    borderVertexIndex--;
+                }
+                else
+                {
+                    vertexIndiciesMap[x, y] = meshVertexIndex;
+                    meshVertexIndex++;
                 }
             }
         }
 
+
+        for (int y = 0 ;  y < borderedSize; y+= meshSimplificationIncrement)
+        {
+            for(int x = 0; x < borderedSize; x+= meshSimplificationIncrement)
+            {
+                int vertexIndex = vertexIndiciesMap[x, y];
+                Vector2 percent = new Vector2((x - meshSimplificationIncrement) / (float)meshSize, (y - meshSimplificationIncrement) / (float)meshSize);
+                float height = heightMap[x, y];
+                Vector3 vertexPosition = new Vector3((topLeftX + percent.x * meshSizeUnsimplified) * meshSettings.meshScale, height, (topLeftZ - percent.y * meshSizeUnsimplified) * meshSettings.meshScale);
+
+                meshData.AddVertex(vertexPosition, percent, vertexIndex);
+
+                if(x < borderedSize - 1 && y < borderedSize - 1)
+                {
+                    int a = vertexIndiciesMap[x, y];
+                    int b = vertexIndiciesMap[x + meshSimplificationIncrement, y];
+                    int c = vertexIndiciesMap[x, y + meshSimplificationIncrement];
+                    int d = vertexIndiciesMap[x + meshSimplificationIncrement, y + meshSimplificationIncrement];
+
+                    meshData.AddTriangle(a, d, c);
+                    meshData.AddTriangle(d, a, b);
+                }
+            }
+        }
+        meshData.ProcessMesh();
+
         return meshData;
-    }
-
-    public static void GenerateMeshAsync(float[,] heightMap, float heightMultiplier, AnimationCurve meshHeightCurve, int levelOfDetail, ComputeShader shader, Action<MeshData> callback)
-    {
-        int xSize = heightMap.GetLength(0);
-        int ySize = heightMap.GetLength(1);
-
-        Texture2D t2d = TextureGenerator.TextureFromHeightMap(heightMap);
-
-        int meshSimplificationIncrement = (levelOfDetail == 0) ? 1 : levelOfDetail * 2;
-        int verticiesPerLine = (xSize - 1) / meshSimplificationIncrement + 1;
-
-        //component for retrieving starting the coroutine and getting the request
-        MeshGeneratorComponent meshGenerator = new GameObject("Mesh Generator").AddComponent<MeshGeneratorComponent>();
-
-        meshGenerator.Vertices = new ComputeBuffer((verticiesPerLine) * (verticiesPerLine), sizeof(float) * 3, ComputeBufferType.Default);
-        meshGenerator.UVs = new ComputeBuffer((verticiesPerLine) * (verticiesPerLine), sizeof(float) * 2, ComputeBufferType.Default);
-        meshGenerator.Triangles = new ComputeBuffer(verticiesPerLine * verticiesPerLine * 6, sizeof(int), ComputeBufferType.Default);
-        meshGenerator.SimplificationIncrement = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Default);
-        meshGenerator.VerticesPerLine = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Default);
-
-        meshGenerator.Curve = new ComputeBuffer(256, sizeof(float), ComputeBufferType.Default);
-
-        int kernelHandle = shader.FindKernel("CSGenerateMesh");
-        meshGenerator.Curve.SetData(meshHeightCurve.GenerateCurveArray());
-        meshGenerator.SimplificationIncrement.SetData(new int[] { meshSimplificationIncrement });
-        meshGenerator.VerticesPerLine.SetData(new int[] { verticiesPerLine });
-
-        shader.SetInt("Width", xSize);
-        shader.SetInt("Height", ySize);
-        shader.SetInt("CurveLength", AnimationCurveExtension.CurveArrayLength);
-
-        shader.SetFloat("Multiplier", heightMultiplier);
-
-        shader.SetBuffer(kernelHandle, "Triangles", meshGenerator.Triangles);
-        shader.SetBuffer(kernelHandle, "MeshVerticies", meshGenerator.Vertices);
-        shader.SetBuffer(kernelHandle, "UVs", meshGenerator.UVs);
-        shader.SetBuffer(kernelHandle, "Curve", meshGenerator.Curve);
-        shader.SetTexture(kernelHandle, "HeightMap", t2d);
-        shader.SetBuffer(kernelHandle, "SimplificationIncrement", meshGenerator.SimplificationIncrement);
-        shader.SetBuffer(kernelHandle, "VerticesPerLine", meshGenerator.VerticesPerLine);
-
-        //TODO: batch creation of all current mesh requests?
-        shader.Dispatch(kernelHandle, 1, 1, 1);
-
-        MeshData meshData = new MeshData(verticiesPerLine, verticiesPerLine);
-        meshGenerator.AsyncMeshRequest(meshData, callback);
-    }
-
-    public class MeshGeneratorComponent : MonoBehaviour
-    {
-        public ComputeBuffer Vertices;
-        public ComputeBuffer UVs;
-        public ComputeBuffer Triangles;
-        public ComputeBuffer VerticesPerLine;
-        public ComputeBuffer SimplificationIncrement;
-        public ComputeBuffer Curve;
-
-        public void AsyncMeshRequest(MeshData meshData, Action<MeshData> callback)
-        {
-            gameObject.hideFlags = HideFlags.HideInHierarchy;
-            StartCoroutine(AsyncMeshDataRequest(meshData, callback));
-        }
-
-        IEnumerator AsyncMeshDataRequest(MeshData meshData, Action<MeshData> callback)
-        {
-            var AsyncVertexReadBack = AsyncGPUReadback.Request(Vertices, null);
-            var AsyncTriangleReadBack = AsyncGPUReadback.Request(Triangles, null);
-            var AsyncUVReadBack = AsyncGPUReadback.Request(UVs, null);
-            while (!AsyncVertexReadBack.done || !AsyncTriangleReadBack.done || !AsyncUVReadBack.done)
-            {
-                yield return null;
-            }
-
-            if(AsyncVertexReadBack.hasError || AsyncTriangleReadBack.hasError || AsyncUVReadBack.hasError)
-            {
-                Debug.LogError("AsyncGPUReadback error when fetching mesh data");
-            }
-            else
-            {
-                meshData.vertices = AsyncVertexReadBack.GetData<Vector3>().ToArray();
-                meshData.triangles = AsyncTriangleReadBack.GetData<int>().ToArray();
-                meshData.uvs = AsyncUVReadBack.GetData<Vector2>().ToArray();
-                callback(meshData);
-            }
-
-            Vertices.Dispose();
-            UVs.Dispose();
-            Triangles.Dispose();
-            VerticesPerLine.Dispose();
-            SimplificationIncrement.Dispose();
-            Curve.Dispose();
-            Destroy(gameObject);
-        }
     }
 }
 
 public class MeshData
 {
-    public Vector3[] vertices;
-    public int[] triangles;
-    public Vector2[] uvs;
+    Vector3[] vertices;
+    int[] triangles;
+    Vector2[] uvs;
 
+    Vector3[] borderVertices;
+    Vector3[] normals;
+    int[] borderTriangles;
+
+    int borderTriangleIndex;
     int triangleIndex;
+    bool useFlatShading;
 
-    public MeshData(int meshWidth, int meshHeight)
+    public MeshData(int verticiesPerLine, bool flatShading)
     {
-        vertices = new Vector3[(meshWidth) * (meshHeight)];
-        triangles = new int[(meshWidth-1) * (meshHeight-1) * 6];
-        uvs = new Vector2[(meshWidth) * (meshHeight)];
-        triangleIndex = 0;
+        vertices = new Vector3[(verticiesPerLine) * (verticiesPerLine)];
+        triangles = new int[(verticiesPerLine-1) * (verticiesPerLine-1) * 6];
+        uvs = new Vector2[(verticiesPerLine) * (verticiesPerLine)];
+
+        borderVertices = new Vector3[verticiesPerLine * 4 + 4];
+        borderTriangles = new int[24 * verticiesPerLine];
+        this.useFlatShading = flatShading;
+
+    }
+
+    private void BakeNormals()
+    {
+        normals = CalculateNormals();
+    }
+
+    public void ProcessMesh()
+    {
+        if(useFlatShading)
+        {
+            FlatShading();
+        } else
+        {
+            BakeNormals();
+        }
     }
 
     public Mesh CreateMesh()
@@ -157,15 +124,121 @@ public class MeshData
         mesh.vertices = vertices;
         mesh.triangles = triangles;
         mesh.uv = uvs;
-        mesh.RecalculateNormals();
+        if(useFlatShading)
+        {
+            mesh.RecalculateNormals();
+        }
+        else
+        {
+            mesh.normals = normals;
+        }
         return mesh;
+    }
+
+    Vector3[] CalculateNormals()
+    {
+        Vector3[] vertexNormals = new Vector3[vertices.Length];
+        int triangleCount = triangles.Length / 3;
+        for(int i = 0; i < triangleCount; i++)
+        {
+            int normalTrianlgeIndex = i * 3;
+            int vertA = triangles[normalTrianlgeIndex];
+            int vertB = triangles[normalTrianlgeIndex + 1];
+            int vertC = triangles[normalTrianlgeIndex + 2];
+
+            Vector3 triangleNormal = SurfaceNormalFromIndicies(vertA, vertB, vertC);
+            vertexNormals[vertA] += triangleNormal;
+            vertexNormals[vertB] += triangleNormal;
+            vertexNormals[vertC] += triangleNormal;
+        }
+
+        int borderTriangleCount = borderTriangles.Length / 3;
+        for (int i = 0; i < borderTriangleCount; i++)
+        {
+            int normalTrianlgeIndex = i * 3;
+            int vertA = borderTriangles[normalTrianlgeIndex];
+            int vertB = borderTriangles[normalTrianlgeIndex + 1];
+            int vertC = borderTriangles[normalTrianlgeIndex + 2];
+
+            Vector3 triangleNormal = SurfaceNormalFromIndicies(vertA, vertB, vertC);
+            if(vertA >= 0)
+            {
+                vertexNormals[vertA] += triangleNormal;
+            }
+            if (vertB >= 0)
+            {
+                vertexNormals[vertB] += triangleNormal;
+            }
+            if (vertC >= 0)
+            {
+                vertexNormals[vertC] += triangleNormal;
+            }
+        }
+
+        for (int i = 0; i < vertexNormals.Length; i++)
+        {
+            vertexNormals[i].Normalize();
+        }
+        return vertexNormals;
+    }
+
+    Vector3 SurfaceNormalFromIndicies(int indexA, int indexB, int indexC)
+    {
+        Vector3 pointA = indexA < 0 ? borderVertices[-indexA - 1] : vertices[indexA];
+        Vector3 pointB = indexB < 0 ? borderVertices[-indexB - 1] : vertices[indexB];
+        Vector3 pointC = indexC < 0 ? borderVertices[-indexC - 1] : vertices[indexC];
+
+        Vector3 ab = pointB - pointA;
+        Vector3 ac = pointC - pointA;
+
+        return Vector3.Cross(ab, ac).normalized;
+    }
+
+    public void AddVertex(Vector3 vertexPosition, Vector2 uv, int vertexIndex)
+    {
+        if(vertexIndex < 0)
+        {
+            borderVertices[-vertexIndex - 1] = vertexPosition;
+        }
+        else
+        {
+            vertices[vertexIndex] = vertexPosition;
+            uvs[vertexIndex] = uv;
+        }
     }
 
     public void AddTriangle(int a, int b, int c)
     {
-        triangles[triangleIndex] = a;
-        triangles[triangleIndex + 1] = b;
-        triangles[triangleIndex + 2] = c;
-        triangleIndex += 3;
+        if(a < 0 || b < 0 || c < 0)
+        {
+            borderTriangles[borderTriangleIndex] = a;
+            borderTriangles[borderTriangleIndex + 1] = b;
+            borderTriangles[borderTriangleIndex + 2] = c;
+            borderTriangleIndex += 3;
+        }
+        else
+        {
+            triangles[triangleIndex] = a;
+            triangles[triangleIndex + 1] = b;
+            triangles[triangleIndex + 2] = c;
+            triangleIndex += 3;
+        }
+    }
+
+    void FlatShading()
+    {
+        Vector3[] flatShadedVertices = new Vector3[triangles.Length];
+        Vector2[] flatShadedUvs = new Vector2[triangles.Length];
+
+        for(int i = 0; i < triangles.Length; i++)
+        {
+            flatShadedVertices[i] = vertices[triangles[i]];
+            flatShadedUvs[i] = uvs[triangles[i]];
+            triangles[i] = i;
+        }
+
+        vertices = flatShadedVertices;
+        uvs = flatShadedUvs;
+
     }
 }

@@ -9,6 +9,14 @@ public class MapDisplay : MonoBehaviour
     public MeshFilter meshFilter;
     public MeshRenderer meshRenderer;
 
+
+    public bool DisableOnEnterPlaymode;
+    private void Start()
+    {
+        meshRenderer.gameObject.SetActive(!DisableOnEnterPlaymode);
+        textureRenderer.gameObject.SetActive(!DisableOnEnterPlaymode);
+    }
+
     public void DrawTexture(Texture2D texture, bool scaleObject)
     {
         textureRenderer.sharedMaterial.mainTexture = texture;
@@ -16,9 +24,9 @@ public class MapDisplay : MonoBehaviour
             textureRenderer.transform.localScale = new Vector3(texture.width, 1, texture.height);
     }
 
-    public void DrawMesh(MeshData meshData, Texture2D texture)
+    public void DrawMesh(MeshData meshData)
     {
+        MapGenerator map = FindObjectOfType<MapGenerator>();
         meshFilter.sharedMesh = meshData.CreateMesh();
-        meshRenderer.sharedMaterial.mainTexture = texture;
     }
 }

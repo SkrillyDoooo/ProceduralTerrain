@@ -5,9 +5,9 @@ using UnityEngine;
 
 public class TileManager : MonoBehaviour
 {
-
     const float viewerMoveThresholdForChunkUpdate = 25f;
     const float sqrViewerMoveThresholdForChunkUpdate = viewerMoveThresholdForChunkUpdate * viewerMoveThresholdForChunkUpdate;
+    const float colliderGenerationDistanceThreshold = 5;
 
     public LODInfo[] detailLevels;
     public static float maxViewDist = 450;
@@ -19,19 +19,20 @@ public class TileManager : MonoBehaviour
     public static Vector2 viewerPositionOld;
     static MapGenerator mapGenerator;
 
-    int chunkSize;
+    float meshWorldSize;
     int chunksVisibleInViewDist;
+    public int colliderLODIndex;
 
     Dictionary<Vector2, TerrainChunk> terrainChunkDictionary = new Dictionary<Vector2, TerrainChunk>();
-    List<TerrainChunk> terrainChunksVisibleLastUpdate = new List<TerrainChunk>();
+    static List<TerrainChunk> visibleTerrainChunks = new List<TerrainChunk>();
 
     public static GameObject m_ParentObjectEditorOnly;
     // Start is called before the first frame update
     void Start()
     {
         mapGenerator = FindObjectOfType<MapGenerator>(); // TODO:: ew
-        chunkSize = MapGenerator.mapChunkSize - 1;
-        chunksVisibleInViewDist = Mathf.RoundToInt(maxViewDist / chunkSize);
+        meshWorldSize = mapGenerator.meshSettings.meshWorldSize;
+        chunksVisibleInViewDist = Mathf.RoundToInt(maxViewDist / meshWorldSize);
         m_ParentObjectEditorOnly = new GameObject("Map Generator (Editor Only)");
         m_ParentObjectEditorOnly.transform.position = Vector3.zero;
         maxViewDist = detailLevels[detailLevels.Length - 1].visibleDistanceThreshold;
@@ -44,6 +45,14 @@ public class TileManager : MonoBehaviour
     {
         viewerPos = new Vector2(viewer.position.x, viewer.position.z);
 
+        if(viewerPos != viewerPositionOld)
+        {
+            foreach(TerrainChunk chunk in visibleTerrainChunks)
+            {
+                chunk.UpdateCollisionMesh();
+            }
+        }
+
         if((viewerPositionOld - viewerPos).sqrMagnitude > sqrViewerMoveThresholdForChunkUpdate)
         {
             viewerPositionOld = viewerPos;
@@ -53,34 +62,33 @@ public class TileManager : MonoBehaviour
 
     void UpdateVisibleChunks()
     {
-        for(int i = 0; i < terrainChunksVisibleLastUpdate.Count; i++)
+
+        HashSet<Vector2> updatedChunkCoords = new HashSet<Vector2>();
+        for(int i = visibleTerrainChunks.Count - 1; i >= 0  ; i--)
         {
-            terrainChunksVisibleLastUpdate[i].SetVisible(false);
+            updatedChunkCoords.Add(visibleTerrainChunks[i].coordinate);
+            visibleTerrainChunks[i].UpdateTerrainChunk();
         }
-        terrainChunksVisibleLastUpdate.Clear();
 
-        int currentChunkCoordX = Mathf.RoundToInt(viewerPos.x / chunkSize);
-        int currentChunkCoordY = Mathf.RoundToInt(viewerPos.y / chunkSize);
-
-
+        int currentChunkCoordX = Mathf.RoundToInt(viewerPos.x / meshWorldSize);
+        int currentChunkCoordY = Mathf.RoundToInt(viewerPos.y / meshWorldSize);
 
         for(int yOffset = - chunksVisibleInViewDist; yOffset <= chunksVisibleInViewDist; yOffset++)
         {
             for (int xOffset = -chunksVisibleInViewDist; xOffset <= chunksVisibleInViewDist; xOffset++)
             {
                 Vector2 viewedChunkCoord = new Vector2(currentChunkCoordX + xOffset, currentChunkCoordY + yOffset);
+                if (updatedChunkCoords.Contains(viewedChunkCoord))
+                    continue;
+
                 if(terrainChunkDictionary.ContainsKey(viewedChunkCoord))
                 {
                     TerrainChunk chunk = terrainChunkDictionary[viewedChunkCoord];
                     chunk.UpdateTerrainChunk();
-                    if(chunk.IsVisible())
-                    {
-                        terrainChunksVisibleLastUpdate.Add(chunk);
-                    }
                 }
                 else
                 {
-                    terrainChunkDictionary.Add(viewedChunkCoord, new TerrainChunk(viewedChunkCoord, chunkSize, detailLevels, mapMaterial));
+                    terrainChunkDictionary.Add(viewedChunkCoord, new TerrainChunk(viewedChunkCoord, meshWorldSize, detailLevels, colliderLODIndex, mapMaterial));
                 }
 
             }
@@ -90,50 +98,60 @@ public class TileManager : MonoBehaviour
     public class TerrainChunk
     {
         GameObject meshObject;
-        Vector2 position;
+        Vector2 sampleCenter;
         Bounds bounds;
 
         MeshRenderer meshRenderer;
         MeshFilter meshFilter;
+        MeshCollider meshCollider;
         LODInfo[] detailLevels;
         LODMesh[] LODMeshes;
+        int colliderLODIndex;
+        bool hasSetCollider;
+        public Vector2 coordinate;
 
-        MapData mapData;
+        HeightMap mapData;
         bool mapDataRecieved;
         int previousLODIndex = -1;
 
-        public TerrainChunk(Vector2 coord, int size, LODInfo[] detailLevels, Material material)
+        public TerrainChunk(Vector2 coord, float meshWorldSize, LODInfo[] detailLevels, int colliderLODIndex, Material material)
         {
+            this.coordinate = coord;
             this.detailLevels = detailLevels;
-            position = coord * size;
-            bounds = new Bounds(position, Vector2.one * size);
-            Vector3 positionV3 = new Vector3(position.x, 0, position.y);
+            sampleCenter = coord * meshWorldSize / mapGenerator.meshSettings.meshScale;
+            Vector2 position = coordinate * meshWorldSize;
+            bounds = new Bounds(position, Vector2.one * meshWorldSize);
 
             meshObject = new GameObject("Terrain Chunk");
             meshRenderer = meshObject.AddComponent<MeshRenderer>();
-            meshRenderer.material = material;
+            meshCollider = meshObject.AddComponent<MeshCollider>();
             meshFilter = meshObject.AddComponent<MeshFilter>();
-            meshObject.transform.position = positionV3;
+            this.colliderLODIndex = colliderLODIndex;
+            hasSetCollider = false;
+
+            meshRenderer.material = material;
+            meshObject.transform.position = new Vector3(position.x, 0, position.y);
 #if UNITY_EDITOR
             meshObject.transform.parent = m_ParentObjectEditorOnly.transform;
 #endif
             SetVisible(false);
-            mapGenerator.RequestMapData(position, OnMapDataReceived);
+            mapGenerator.RequestHeightMap(sampleCenter, OnMapDataReceived);
 
             LODMeshes = new LODMesh[detailLevels.Length];
             for (int i = 0; i < detailLevels.Length; i++)
             {
-                LODMeshes[i] = new LODMesh(detailLevels[i].lod, UpdateTerrainChunk);
+                LODMeshes[i] = new LODMesh(detailLevels[i].lod);
+                LODMeshes[i].updateCallback += UpdateTerrainChunk;
+                if (i == colliderLODIndex)
+                    LODMeshes[i].updateCallback += UpdateCollisionMesh;
             }
         }
 
-        void OnMapDataReceived(MapData mapData)
+        void OnMapDataReceived(HeightMap mapData)
         {
             this.mapData = mapData;
             mapDataRecieved = true;
 
-            Texture2D texture = TextureGenerator.TextureFromColorMap(mapData.colorMap, MapGenerator.mapChunkSize, MapGenerator.mapChunkSize);
-            meshRenderer.material.mainTexture = texture;
             UpdateTerrainChunk();
         }
 
@@ -147,6 +165,7 @@ public class TileManager : MonoBehaviour
             if(mapDataRecieved)
             {
                 float viewDstFromNearestEdge = Mathf.Sqrt(bounds.SqrDistance(viewerPos));
+                bool wasVisible = IsVisible();
                 bool visible = viewDstFromNearestEdge <= maxViewDist;
 
                 if (visible)
@@ -174,12 +193,48 @@ public class TileManager : MonoBehaviour
                         {
                             lodMesh.RequestMesh(mapData);
                         }
+                    }
 
+                    if(wasVisible != visible)
+                    {
+                        if(visible)
+                        {
+                            visibleTerrainChunks.Add(this);
+                        }
+                        else
+                        {
+                            visibleTerrainChunks.Remove(this);
+                        }
+                        SetVisible(visible);
                     }
 
                 }
 
-                SetVisible(visible);
+            }
+        }
+
+        public void UpdateCollisionMesh()
+        {
+            if (hasSetCollider)
+                return;
+
+            float sqrDstFromViewerToEdge = bounds.SqrDistance(viewerPos);
+
+            if(sqrDstFromViewerToEdge < detailLevels[colliderLODIndex].sqrVisibleDstThrehold)
+            {
+                if(!LODMeshes[colliderLODIndex].hasRequestedMesh)
+                {
+                    LODMeshes[colliderLODIndex].RequestMesh(mapData);
+                }
+            }
+
+            if(sqrDstFromViewerToEdge < colliderGenerationDistanceThreshold * colliderGenerationDistanceThreshold)
+            {
+                if(LODMeshes[colliderLODIndex].hasMesh)
+                {
+                    meshCollider.sharedMesh = LODMeshes[colliderLODIndex].mesh;
+                    hasSetCollider = true;
+                } 
             }
         }
 
@@ -200,12 +255,11 @@ public class TileManager : MonoBehaviour
         public bool hasRequestedMesh;
         public bool hasMesh;
         public int lod;
-        System.Action updateCallback;
+        public event System.Action updateCallback;
 
-        public LODMesh(int lod, System.Action updateCallback)
+        public LODMesh(int lod)
         {
             this.lod = lod;
-            this.updateCallback = updateCallback;
         }
 
         void OnMeshDataReceived(MeshData meshData)
@@ -214,7 +268,7 @@ public class TileManager : MonoBehaviour
             hasMesh = true;
             updateCallback ();
         }
-        public void RequestMesh(MapData mapData)
+        public void RequestMesh(HeightMap mapData)
         {
             hasRequestedMesh = true;
             mapGenerator.RequestMeshData(mapData, lod, OnMeshDataReceived);
@@ -224,7 +278,13 @@ public class TileManager : MonoBehaviour
     [System.Serializable]
     public struct LODInfo
     {
+        [Range(0, MeshSettings.numSupportedLOD-1)]
         public int lod;
         public float visibleDistanceThreshold;
+
+        public float sqrVisibleDstThrehold
+        {
+            get { return visibleDistanceThreshold * visibleDistanceThreshold;  } 
+        }
     }
 }
