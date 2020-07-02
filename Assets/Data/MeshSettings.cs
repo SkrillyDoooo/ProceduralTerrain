@@ -14,6 +14,7 @@ public class MeshSettings : UpdateableData
 
     public float meshScale = 5.0f;
     public bool useFlatShading;
+    public bool generateColliderAroundColliderPOI;
 
     [Range(0, numSupportedChunkSizes - 1)]
     public int chunkSizeIndex;
@@ -25,7 +26,7 @@ public class MeshSettings : UpdateableData
     {
         get
         {
-            return supportedChunkSizes[(useFlatShading) ? chunkSizeFlatShadedIndex : chunkSizeIndex] + 1;
+            return supportedChunkSizes[(useFlatShading) ? chunkSizeFlatShadedIndex : chunkSizeIndex] + 5;
         }
     }
 

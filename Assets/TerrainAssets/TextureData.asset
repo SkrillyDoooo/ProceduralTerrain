@@ -10,43 +10,43 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7753158b483dfb44480cd114d2e85678, type: 3}
-  m_Name: New Texture Data
+  m_Name: TextureData
   m_EditorClassIdentifier: 
   autoUpdate: 1
   layers:
   - texture: {fileID: 2800000, guid: 7fa6d4cd1de1b614295eb6c56bb66a20, type: 3}
-    tint: {r: 0, g: 0, b: 0, a: 0}
-    tintStrength: 0
+    tint: {r: 0.12941177, g: 0.5086115, b: 0.8392157, a: 0}
+    tintStrength: 0.52
     startHeight: 0
     blendStrength: 0
-    scale: 40
+    scale: 61.26
   - texture: {fileID: 2800000, guid: 41f3e7d15d467db4eab7f3beb2230984, type: 3}
-    tint: {r: 0, g: 0, b: 0, a: 0}
-    tintStrength: 0
-    startHeight: 0.071
-    blendStrength: 0
-    scale: 10
+    tint: {r: 0.9056604, g: 0.71711135, b: 0.19992878, a: 0}
+    tintStrength: 0.198
+    startHeight: 0.02
+    blendStrength: 0.027
+    scale: 24.63
   - texture: {fileID: 2800000, guid: 2052a11d80e10464f8afb60a043dc6c2, type: 3}
-    tint: {r: 0, g: 0, b: 0, a: 0}
-    tintStrength: 0
-    startHeight: 0.122
-    blendStrength: 0.111
-    scale: 10
+    tint: {r: 0.16778143, g: 0.49056602, b: 0.1175507, a: 0}
+    tintStrength: 0.034
+    startHeight: 0.072
+    blendStrength: 0.079
+    scale: 33.3
   - texture: {fileID: 2800000, guid: f169b6ee7b933f8429bebdcff7c43713, type: 3}
-    tint: {r: 0, g: 0, b: 0, a: 0}
-    tintStrength: 0
-    startHeight: 0.288
-    blendStrength: 0.133
-    scale: 10
+    tint: {r: 0.4056604, g: 0.30612418, b: 0.17757207, a: 0}
+    tintStrength: 0.079
+    startHeight: 0.214
+    blendStrength: 0.15
+    scale: 60
   - texture: {fileID: 2800000, guid: 77c839d751f62724aa0b2c8f0692cbf4, type: 3}
-    tint: {r: 0, g: 0, b: 0, a: 0}
-    tintStrength: 0
-    startHeight: 0.66
-    blendStrength: 0.251
-    scale: 10.5
+    tint: {r: 0.20754719, g: 0.1747979, b: 0.14763263, a: 0}
+    tintStrength: 0.11
+    startHeight: 0.504
+    blendStrength: 0.222
+    scale: 72.9
   - texture: {fileID: 2800000, guid: 1ee12e4a757f2ef41910fa456146e346, type: 3}
-    tint: {r: 0, g: 0, b: 0, a: 0}
-    tintStrength: 0
-    startHeight: 0.933
-    blendStrength: 0.159
-    scale: 36
+    tint: {r: 1, g: 1, b: 1, a: 0}
+    tintStrength: 0.093
+    startHeight: 0.731
+    blendStrength: 0.189
+    scale: 35.31

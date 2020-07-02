@@ -1,0 +1,3 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+    <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 2px; border-bottom-left-radius: 2px; border-top-right-radius: 2px; border-bottom-right-radius: 2px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;" />
+</ui:UXML>

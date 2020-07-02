@@ -1,0 +1,12 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+    <ui:VisualElement name="cost" style="height: 100%; align-items: flex-start; justify-content: space-around; margin-left: 6%;">
+        <ui:VisualElement name="gold" style="flex-direction: row; display: flex; height: 25%; align-items: center; visibility: visible;">
+            <ui:VisualElement name="image" style="width: 32px; height: 32px; background-image: url(&apos;/Assets/UI/Images/coin.png&apos;);" />
+            <ui:Label text="100" name="amount" style="font-size: 20px;" />
+        </ui:VisualElement>
+        <ui:VisualElement name="glory" style="flex-direction: row; height: 25%; align-items: center;">
+            <ui:VisualElement name="image" style="width: 32px; height: 32px; background-image: url(&apos;/Assets/UI/Images/glory.png&apos;);" />
+            <ui:Label text="100" name="amount" style="height: auto; font-size: 20px;" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

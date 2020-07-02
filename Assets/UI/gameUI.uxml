@@ -1,0 +1,53 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+    <ui:VisualElement name="root" style="width: 100%; height: 100%; position: relative;">
+        <ui:VisualElement name="top" style="width: 100%; height: 5%; flex-shrink: 0; background-image: url(&apos;/Assets/UI/Images/backmid.png&apos;);">
+            <ui:VisualElement name="resources" style="width: 50%; height: 100%; flex-direction: row; align-items: center; justify-content: flex-start; margin-left: 32px;">
+                <ui:VisualElement name="gold" style="flex-direction: row; justify-content: space-between; -unity-text-align: middle-left; padding-right: 64px;">
+                    <ui:VisualElement name="image" style="width: 24px; height: 24px; background-image: url(&apos;/Assets/UI/Images/coin.png&apos;);" />
+                    <ui:Label text="0" name="amount" style="font-size: 16px;" />
+                </ui:VisualElement>
+                <ui:VisualElement name="glory" style="flex-direction: row; justify-content: space-between; -unity-text-align: middle-left; padding-right: 64px;">
+                    <ui:VisualElement name="image" style="width: 24px; height: 24px; background-image: url(&apos;/Assets/UI/Images/glory.png&apos;); cursor: initial;" />
+                    <ui:Label text="0" name="amount" style="font-size: 16px;" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="middle" style="flex-grow: 1; flex-shrink: 0; width: 100%; cursor: initial;" />
+        <ui:VisualElement name="bottom" style="width: 100%; height: 25%; align-items: flex-end; flex-direction: column; justify-content: flex-end; flex-shrink: 0;">
+            <ui:VisualElement name="toolbar-container" style="width: 100%; height: 256px; align-items: flex-end; flex-direction: row; justify-content: center; flex-wrap: nowrap; flex-shrink: 1;">
+                <ui:VisualElement name="bottom-left" style="width: 265px; height: 100%; background-image: url(&apos;/Assets/UI/Images/backleft.png&apos;); flex-shrink: 1;" />
+                <ui:VisualElement name="bottom-middle" style="height: 100%; flex-grow: 0; flex-shrink: 1; background-image: url(&apos;/Assets/UI/Images/backmid.png&apos;); width: 1349px; flex-direction: column; flex-basis: auto;">
+                    <ui:VisualElement name="context-window" style="height: 100%; width: 100%; padding-left: 10px; padding-right: 10px; padding-top: 20px; padding-bottom: 20px; flex-direction: row; flex-wrap: nowrap;">
+                        <ui:VisualElement name="button-panel" style="width: 50%; flex-direction: row;">
+                            <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 2px; border-bottom-left-radius: 2px; border-top-right-radius: 2px; border-bottom-right-radius: 2px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;" />
+                            <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 2px; border-bottom-left-radius: 2px; border-top-right-radius: 2px; border-bottom-right-radius: 2px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;" />
+                        </ui:VisualElement>
+                        <ui:VisualElement style="width: 5px; height: 100%; background-color: rgb(148, 134, 123);" />
+                        <ui:VisualElement name="info-panel" style="width: 50%;">
+                            <ui:VisualElement name="header" style="flex-direction: row; align-items: center; flex-shrink: 0;">
+                                <ui:VisualElement name="header-image" style="width: 64px; height: 64px; flex-shrink: 0; background-image: url(&apos;/Assets/UI/Images/barracks.png&apos;);" />
+                                <ui:Label text="Barracks&#10;" name="header-name" style="-unity-font: resource(&apos;Fonts/Roboto-Regular&apos;); width: 100%; height: 25px; font-size: 32px; flex-shrink: 1; visibility: visible;" />
+                            </ui:VisualElement>
+                            <ui:VisualElement name="details" style="height: 100%; align-items: stretch; justify-content: flex-start;" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement name="bottom-right" style="width: 265px; height: 100%; background-image: url(&apos;/Assets/UI/Images/backright.png&apos;); flex-shrink: 1; flex-direction: row; align-items: flex-start;">
+                    <ui:VisualElement name="command-window" style="width: 100%; height: 256px; margin-left: 10px; margin-right: 0; margin-top: 0; margin-bottom: 0; padding-left: 8px; padding-right: 14px; padding-top: 20px; padding-bottom: 7%; flex-direction: row; align-items: flex-start; justify-content: flex-start; flex-wrap: wrap;">
+                        <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 1px; border-bottom-left-radius: 1px; border-top-right-radius: 1px; border-bottom-right-radius: 1px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;">
+                            <ui:VisualElement name="brackets" style="width: 48px; height: 48px; flex-shrink: 0; background-image: url(&apos;/Assets/UI/Images/SelectionBrackets.png&apos;);" />
+                        </ui:Button>
+                        <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 1px; border-bottom-left-radius: 1px; border-top-right-radius: 1px; border-bottom-right-radius: 1px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;" />
+                        <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 1px; border-bottom-left-radius: 1px; border-top-right-radius: 1px; border-bottom-right-radius: 1px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;" />
+                        <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 1px; border-bottom-left-radius: 1px; border-top-right-radius: 1px; border-bottom-right-radius: 1px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;" />
+                        <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 1px; border-bottom-left-radius: 1px; border-top-right-radius: 1px; border-bottom-right-radius: 1px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;" />
+                        <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 1px; border-bottom-left-radius: 1px; border-top-right-radius: 1px; border-bottom-right-radius: 1px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;" />
+                        <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 1px; border-bottom-left-radius: 1px; border-top-right-radius: 1px; border-bottom-right-radius: 1px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;" />
+                        <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 1px; border-bottom-left-radius: 1px; border-top-right-radius: 1px; border-bottom-right-radius: 1px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;" />
+                        <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 1px; border-bottom-left-radius: 1px; border-top-right-radius: 1px; border-bottom-right-radius: 1px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
