@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 
-[CreateAssetMenu()]
+[CreateAssetMenu(menuName = "Warpath Terrain Data/Texture")]
 public class TextureData : UpdateableData
 {
 

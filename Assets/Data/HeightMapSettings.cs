@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu()]
+[CreateAssetMenu(menuName = "Warpath Terrain Data/Height Map")]
 public class HeightMapSettings : UpdateableData
 {
     public NoiseSettings noiseSettings;

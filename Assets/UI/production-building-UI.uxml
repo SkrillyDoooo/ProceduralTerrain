@@ -1,12 +1,18 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
-    <ui:VisualElement name="production-root" style="height: 100%; width: 100%; padding-left: 10px; padding-right: 10px; padding-top: 10px; padding-bottom: 10px; align-items: center; flex-wrap: wrap;">
-        <ui:VisualElement name="production-image-container" style="height: 90px; width: 90%; align-items: center; justify-content: center; flex-direction: row; top: -17%;">
-            <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 2px; border-bottom-left-radius: 2px; border-top-right-radius: 2px; border-bottom-right-radius: 2px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;" />
-            <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 2px; border-bottom-left-radius: 2px; border-top-right-radius: 2px; border-bottom-right-radius: 2px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;" />
-            <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 2px; border-bottom-left-radius: 2px; border-top-right-radius: 2px; border-bottom-right-radius: 2px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;" />
-            <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 2px; border-bottom-left-radius: 2px; border-top-right-radius: 2px; border-bottom-right-radius: 2px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;" />
-            <ui:Button text="&#10;" name="button" style="width: 48px; height: 48px; background-image: url(&apos;/Assets/UI/Images/BuildIcon.png&apos;); border-top-left-radius: 2px; border-bottom-left-radius: 2px; border-top-right-radius: 2px; border-bottom-right-radius: 2px; border-left-width: 1px; border-right-width: 1px; border-top-width: 1px; border-bottom-width: 1px; visibility: visible; align-items: center; justify-content: center; flex-wrap: nowrap; overflow: visible;" />
+    <ui:VisualElement name="production-root" class="production-details-root">
+        <Style src="/Assets/progress-bar.uss" />
+        <Style src="/Assets/game.uss" />
+        <ui:VisualElement name="production-image-container" class="production-buttons-container">
+            <ui:Button name="button" class="warpath-button" />
+            <ui:Button name="button" class="warpath-button" />
+            <ui:Button name="button" class="warpath-button" />
+            <ui:Button name="button" class="warpath-button" />
+            <ui:Button name="button" class="warpath-button" />
         </ui:VisualElement>
-        <uie:ProgressBar name="production-progress" title=" " style="width: 50%; height: 24px; justify-content: center; max-height: 12px; min-height: 12px; max-width: 50%; min-width: 50%; top: -29%;" />
+        <ui:VisualElement name="progress-bar" class="progress-bar-root">
+            <ui:VisualElement name="progress-background" class="progress-bar-background">
+                <ui:VisualElement name="progress" class="progress" />
+            </ui:VisualElement>
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

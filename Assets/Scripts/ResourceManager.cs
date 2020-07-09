@@ -35,7 +35,7 @@ public class ResourceManager : MonoBehaviour
 
     public bool CanAfford(ResourceType type, int amount)
     {
-        return ledger[type] - amount > 0;
+        return ledger[type] - amount >= 0;
     }
 
     public void Spend(ResourceType type, int amount)

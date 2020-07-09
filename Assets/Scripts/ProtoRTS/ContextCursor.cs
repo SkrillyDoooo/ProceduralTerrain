@@ -31,13 +31,11 @@ public class ContextCursor : MonoBehaviour
     InteractionMode currentZone = InteractionMode.Game;
     GameContext currentGameContext = GameContext.Idle;
 
-    public Game game;
-
     private void Start()
     {
-        game.bottomFocusGained += HandleUIFocus;
-        game.middleFocusGained += HandleGameFocus;
-        game.topFocusGained += HandleUIFocus;
+        Game.Instance.bottomFocusGained += HandleUIFocus;
+        Game.Instance.middleFocusGained += HandleGameFocus;
+        Game.Instance.topFocusGained += HandleUIFocus;
         idleClickMask = LayerMask.GetMask("Clickable");
 
         terrainPlane = new Plane(Vector3.up, Vector3.zero);
@@ -118,19 +116,19 @@ public class ContextCursor : MonoBehaviour
                 if (selectable != null)
                 {
                     ClickableObjectData data = selectable.GetClickableObjectData();
-                    VisualElement detailRoot = game.SetSelectableContextWindow(data.contextWindowButtons, data.infoPanelTemplate, data.icon, data.name);
+                    VisualElement detailRoot = Game.Instance.SetSelectableContextWindow(data.contextWindowButtons, data.infoPanelTemplate, data.icon, data.name);
                     selectable.SetInfoPanelRoot(detailRoot);
-                    game.SetSelectableCommandWindow(data.commandWindowButtons);
+                    Game.Instance.SetSelectableCommandWindow(data.commandWindowButtons);
                     if (!Input.GetKey(KeyCode.LeftControl))
-                        game.ClearSelectables();
+                        Game.Instance.ClearSelectables();
 
-                    game.AddSelectable(selectable);
+                    Game.Instance.AddSelectable(selectable);
                     selectable.Select();
                 }
             }
             else
             {
-                game.ClickedNothing();
+                Game.Instance.ClickedNothing();
             }
         }
     }
@@ -157,7 +155,7 @@ public class ContextCursor : MonoBehaviour
         PositionCursorObject();
         if (Input.GetMouseButtonDown(0))
         {
-            if(/*isValidPlacement() &&*/ game.TryPurchase(currentBuildData))
+            if(/*isValidPlacement() &&*/ Game.Instance.TryPurchase(currentBuildData.cost))
             {
                 GameObject.Instantiate(currentBuildData.prefab, cursorObject.position, Quaternion.identity);
             }

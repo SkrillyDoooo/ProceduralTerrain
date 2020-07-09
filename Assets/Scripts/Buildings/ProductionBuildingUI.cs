@@ -16,10 +16,12 @@ public class ProductionBuildingUI : MonoBehaviour, ISelectableObject
 
     VisualElement infoPanelUI;
     List<Button> productionQueueButtons;
-    ProgressBar progressBar;
+    VisualElement progressBar;
+    VisualElement progressBarBackground;
     const int maxProduction = 5;
     ProductionBuilding productionBuilding;
     SelectionComponent selection;
+    Length progressBarLength;
     bool selected = false;
     public event EventHandler Remove;
 
@@ -35,7 +37,7 @@ public class ProductionBuildingUI : MonoBehaviour, ISelectableObject
     {
         if(selected && progressBar != null)
         {
-            progressBar.value = productionBuilding.currentProgress * 100;
+            UpdateProgress();
         }
     }
 
@@ -68,7 +70,8 @@ public class ProductionBuildingUI : MonoBehaviour, ISelectableObject
         if (productionBuilding.productionQueueCount >= maxProduction)
             return;
 
-        productionBuilding.AddItem(optionIndex);
+        if (!productionBuilding.TryAddItem(optionIndex))
+            return;
         UpdateProductionButtons();
     }
 
@@ -91,15 +94,20 @@ public class ProductionBuildingUI : MonoBehaviour, ISelectableObject
     {
         infoPanelUI = root;
         productionQueueButtons = infoPanelUI.Query<Button>(name: "button").ToList();
-        progressBar = infoPanelUI.Query<ProgressBar>(name: "production-progress");
-        progressBar.value = 50;
-        progressBar.visible = true;
+        progressBarLength = new Length(0, LengthUnit.Percent);
+        progressBar = infoPanelUI.Query<VisualElement>(className: "progress");
 
         infoPanelUI.RegisterCallback<ClickEvent>(CancelItemCallback);
 
+        UpdateProgress();
         UpdateProductionButtons();
     }
 
+    private void UpdateProgress()
+    {
+        progressBarLength.value = productionBuilding.currentProgress * 100;
+        progressBar.style.width = progressBarLength;
+    }
 
     private void UpdateProductionButtons()
     {
@@ -143,6 +151,7 @@ public class ProductionBuildingUI : MonoBehaviour, ISelectableObject
         Remove.Invoke(this, new EventArgs());
         selection.SetProjectorActive(false);
 
+        productionBuilding.Demolish();
         Destroy(productionBuilding);
         Destroy(gameObject, 0.2f);
     }

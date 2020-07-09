@@ -5,7 +5,7 @@ using System.Runtime.Remoting.Contexts;
 using System;
 
 [RequireComponent(typeof(UIDocument), typeof(EventSystem))]
-public class Game: MonoBehaviour
+public class Game : MonoBehaviour
 {
     private const string ActiveClassName = "game-button--active";
 
@@ -19,6 +19,18 @@ public class Game: MonoBehaviour
     ContextWindowUI contextWindow;
     CommandWindowUI commandWindow;
     VisualElement vsBracket;
+    Vector3 bracketScale;
+
+    private static Game m_Instance;
+    public static Game Instance
+    {
+        get
+        {
+            if (m_Instance == null)
+                m_Instance = FindObjectOfType<Game>();
+            return m_Instance;
+        }
+    }
 
 
     int maxSelectableObjects = 2048;
@@ -30,9 +42,13 @@ public class Game: MonoBehaviour
     [EnumNamedArrayAttribute(typeof(ContextWindowUI.ContextWindowMode))]
     public WindowButtonsData[] contextWindowButtonsData = new WindowButtonsData[(int)ContextWindowUI.ContextWindowMode.Count];
     public BuildOptionsData buildOptionsData;
+    public ResourcePanelData resourcePanelData;
+
     public ContextCursor contextInteractor;
     ResourceManager resourceManager;
     ResourceUI resourceUI;
+
+    Button bracketedButton;
 
     public void SetPanelSettings(PanelSettings newPanelSettings)
     {
@@ -40,6 +56,18 @@ public class Game: MonoBehaviour
         var uiDocument = GetComponent<UIDocument>();
         uiDocument.panelSettings = panelSettings;
     }
+
+    internal void Refund(ResourceManager.ItemCost[] cost)
+    {
+        for(int i = 0; i < cost.Length; i++)
+        {
+            resourceManager.Add(cost[i].type, cost[i].cost);
+            resourceUI.UpdateResource(cost[i].type, resourceManager.GetValue(cost[i].type));
+        }
+    }
+
+    Action<TimerState> vsBracketAnimation;
+    IVisualElementScheduledItem bracketAnimator;
 
     private void Start()
     {
@@ -63,12 +91,22 @@ public class Game: MonoBehaviour
         this.vsBracket = root.Query<VisualElement>(name: "brackets");
         this.vsBracket.visible = false;
 
+        bracketAnimator = vsBracket.schedule.Execute(AnimateBrackets).Every(66);
+        bracketAnimator.Pause();
+        bracketScale = vsBracket.transform.scale;
+
         root.RegisterCallback<MouseOutEvent>(evt =>
         {
             if (evt.target is Button button)
             {
-                vsBracket.visible = false;
-                button.Remove(vsBracket);
+                if (bracketedButton == button)
+                {
+                    vsBracket.visible = false;
+                    button.Remove(vsBracket);
+                    bracketedButton = null;
+                    bracketAnimator.Pause();
+                    Debug.Log("remove");
+                }
             }
         });
 
@@ -76,8 +114,14 @@ public class Game: MonoBehaviour
         {
             if (evt.target is Button button)
             {
-                button.Add(vsBracket);
-                vsBracket.visible = true;
+                if(bracketedButton == null || bracketedButton != button)
+                {
+                    button.Add(vsBracket);
+                    vsBracket.visible = true;
+                    bracketedButton = button;
+                    bracketAnimator.Resume();
+                    Debug.Log("addBRacketer");
+                }
             }
         });
 
@@ -93,7 +137,7 @@ public class Game: MonoBehaviour
         contextWindow.BuildButtonPressed += StartBuildMode;
         contextWindow.SelectableButtonPressed += ContextSelectableButtonPressed;
 
-        resourceUI = new ResourceUI(top);
+        resourceUI = new ResourceUI(top, resourcePanelData);
 
         top.RegisterCallback<MouseEnterEvent>(evt => {
             topFocusGained();
@@ -118,18 +162,18 @@ public class Game: MonoBehaviour
         }
     }
 
-    public bool TryPurchase(BuildData currentBuildData)
+    public bool TryPurchase(ResourceManager.ItemCost[] cost)
     {
-        for(int i = 0; i < currentBuildData.cost.Length; i ++)
+        for (int i = 0; i < cost.Length; i++)
         {
-            if (!resourceManager.CanAfford(currentBuildData.cost[i].type, currentBuildData.cost[i].cost))
+            if (!resourceManager.CanAfford(cost[i].type, cost[i].cost))
                 return false;
         }
 
-        for (int i = 0; i < currentBuildData.cost.Length; i++)
+        for (int i = 0; i < cost.Length; i++)
         {
-            ResourceManager.ResourceType type = currentBuildData.cost[i].type;
-            resourceManager.Spend(type, currentBuildData.cost[i].cost);
+            ResourceManager.ResourceType type = cost[i].type;
+            resourceManager.Spend(type, cost[i].cost);
             resourceUI.UpdateResource(type, resourceManager.GetValue(type));
         }
 
@@ -251,13 +295,16 @@ public class Game: MonoBehaviour
         contextWindow.SetContext(ContextWindowUI.ContextWindowMode.Build);
     }
 
+    void AnimateBrackets()
+    {
+        vsBracket.style.height = 48 + Mathf.Sin(Time.time * 10) * 5;
+        vsBracket.style.width = 48 + Mathf.Sin(Time.time * 10) * 5;
+    }
+
     private void Update()
     {
         commandWindow.DoCommandWindow();
         contextWindow.DoContextWindow();
-
-        vsBracket.style.height = 48 + Mathf.Sin(Time.time * 10) * 5;
-        vsBracket.style.width = 48 + Mathf.Sin(Time.time * 10) * 5;
     }
 
     private void OnValidate()

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-[CreateAssetMenu()]
+[CreateAssetMenu(menuName = "Warpath UI Data/Building Options")]
 public class BuildOptionsData : ScriptableObject
 {
     public WindowButtonsData buildWindowData;

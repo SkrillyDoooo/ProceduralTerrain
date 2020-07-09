@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -23,7 +24,7 @@ public class ProductionBuilding : MonoBehaviour
     [SerializeField]
     private Unit[] productionOptions;
 
-    float currentTimeToComplete;
+    float currentTimeToComplete = 1.0f;
     float timer;
     // Update is called once per frame
     void Update()
@@ -42,20 +43,28 @@ public class ProductionBuilding : MonoBehaviour
         return productionQueue.ToArray();
     }
 
-    public void AddItem(int optionIndex)
+    public bool TryAddItem(int optionIndex)
     {
         Unit option = productionOptions[optionIndex];
+        if (!Game.Instance.TryPurchase(option.cost))
+            return false;
+
         if (productionQueueCount == 0)
             currentTimeToComplete = option.timeToCreate;
 
         productionQueue.Enqueue(option);
+        return true;
     }
 
     private void ItemComplete()
     {
+        if (productionQueue.Count == 0)
+            return;
         Unit completedItem = productionQueue.Dequeue();
         UnitComplete();
-        var go = Instantiate(completedItem.prefab) as GameObject;
+        var go = Instantiate(completedItem.prefab,transform.position,Quaternion.identity) as GameObject;
+        var unit = go.GetComponent<PathfindingUnit>();
+        unit.SetTargetPosition(transform.position + Vector3.right * 35);
         go.name = completedItem.name;
         StartNextUnit();
     }
@@ -63,6 +72,7 @@ public class ProductionBuilding : MonoBehaviour
     public void RemoveItem(int index)
     {
         Unit[] tmp = productionQueue.ToArray();
+        Game.Instance.Refund(tmp[index].cost);
         int queueCount = productionQueue.Count;
         productionQueue.Clear();
         int i = 0;
@@ -79,10 +89,19 @@ public class ProductionBuilding : MonoBehaviour
 
     void StartNextUnit()
     {
+        timer = 0;
         if (productionQueueCount == 0)
             return;
         currentTimeToComplete = productionQueue.Peek().timeToCreate;
-        timer = 0;
+    }
+
+    internal void Demolish()
+    {
+        while(productionQueue.Count > 0)
+        {
+            var unit = productionQueue.Dequeue();
+            Game.Instance.Refund(unit.cost);
+        }
     }
 }
 
@@ -94,5 +113,6 @@ public struct Unit
     public GameObject prefab;
     public float timeToCreate;
     public Texture2D icon;
+    public ResourceManager.ItemCost[] cost;
 }
 

@@ -137,11 +137,17 @@ MonoBehaviour:
       type: 3}
     timeToCreate: 5
     icon: {fileID: 2800000, guid: e3bdc4ed8980bb44e8e4a1b9a757b527, type: 3}
+    cost:
+    - type: 1
+      cost: 2
   - name: Archer
     prefab: {fileID: 4594658152961955843, guid: 45c1fbc98fa99664b857e66da74b8f23,
       type: 3}
     timeToCreate: 10
     icon: {fileID: 2800000, guid: 6faadf6da81a51c4ba936a63420c2048, type: 3}
+    cost:
+    - type: 1
+      cost: 5
 --- !u!1001 &1754953014206289602
 PrefabInstance:
   m_ObjectHideFlags: 0

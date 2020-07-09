@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-[CreateAssetMenu()]
+[CreateAssetMenu(menuName = "Warpath UI Data/Button Data")]
 public class WindowButtonsData : ScriptableObject
 {
     public ButtonData[] buttons;
