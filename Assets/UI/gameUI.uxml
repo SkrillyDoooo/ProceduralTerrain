@@ -13,7 +13,10 @@
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
-        <ui:VisualElement name="middle" class="middle" />
+        <ui:VisualElement name="middle" class="middle">
+            <ui:VisualElement name="selector" picking-mode="Ignore" class="box-selector" />
+            <ui:VisualElement picking-mode="Ignore" name="health-bar-root" style="position: absolute; height: 100%; width: 100%; max-width: 100%; max-height: 100%; min-width: 100%; min-height: 100%;" />
+        </ui:VisualElement>
         <ui:VisualElement name="bottom" class="bottom">
             <ui:VisualElement name="toolbar-container" class="toolbar-container">
                 <ui:VisualElement name="bottom-left" class="bottom-left" />
@@ -32,7 +35,7 @@
                         <ui:VisualElement name="info-panel" class="info-panel">
                             <ui:VisualElement name="header" class="info-header">
                                 <ui:VisualElement name="header-image" class="header-image" />
-                                <ui:Label text="Barracks&#10;" name="header-name" class="header-name" />
+                                <ui:Label name="header-name" text="Barracks&#10;" binding-path="m_Name" class="header-name" />
                             </ui:VisualElement>
                             <ui:VisualElement name="details" class="details" />
                         </ui:VisualElement>

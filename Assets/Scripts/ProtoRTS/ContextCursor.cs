@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -20,9 +21,13 @@ public class ContextCursor : MonoBehaviour
     }
 
     public Transform cursorObject;
+    public Transform navMeshHeightTestObject;
+
     Camera mainCam;
     Plane terrainPlane;
     BuildData currentBuildData;
+
+    private BoxSelectorController boxSelectorController;
 
     Renderer mouseObjectRenderer;
     int terrainMask;
@@ -30,6 +35,8 @@ public class ContextCursor : MonoBehaviour
 
     InteractionMode currentZone = InteractionMode.Game;
     GameContext currentGameContext = GameContext.Idle;
+
+    public TerrainGenerator terrain;
 
     private void Start()
     {
@@ -93,7 +100,13 @@ public class ContextCursor : MonoBehaviour
 
     void DoGameContext()
     {
-        switch(currentGameContext)
+        if (TryGetCursorRaycastPoint(out var point))
+        {
+            cursorObject.transform.position = point;
+            point.y = 0;
+            navMeshHeightTestObject.position = new Vector3(point.x, TerrainGenerator.Instance.GetHeightAtCoord(new Vector2(point.x, point.z)) + 20.0f, point.z);
+        }
+        switch (currentGameContext)
         {
             case GameContext.Idle:
                 DoIdleGameContext();
@@ -106,36 +119,42 @@ public class ContextCursor : MonoBehaviour
 
     void DoIdleGameContext()
     {
-        PositionCursorObject();
-        if(Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0))
         {
             Ray ray = mainCam.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out RaycastHit hitInfo, 1000.0f, idleClickMask))
+            if (Physics.Raycast(ray, out RaycastHit hitInfo, 100000.0f, idleClickMask))
             {
                 ISelectableObject selectable = hitInfo.collider.GetComponent<ISelectableObject>();
                 if (selectable != null)
                 {
-                    ClickableObjectData data = selectable.GetClickableObjectData();
+                    ContextPanelData data = selectable.GetContextPanelData();
                     VisualElement detailRoot = Game.Instance.SetSelectableContextWindow(data.contextWindowButtons, data.infoPanelTemplate, data.icon, data.name);
-                    selectable.SetInfoPanelRoot(detailRoot);
-                    Game.Instance.SetSelectableCommandWindow(data.commandWindowButtons);
                     if (!Input.GetKey(KeyCode.LeftControl))
                         Game.Instance.ClearSelectables();
 
+                    Game.Instance.SetSelectableCommandWindow(data.commandWindowButtons);
                     Game.Instance.AddSelectable(selectable);
-                    selectable.Select();
+                    selectable.Select(detailRoot);
                 }
             }
             else
             {
-                Game.Instance.ClickedNothing();
+                Game.Instance.Cancel();
+            }
+        }
+
+        if(Input.GetMouseButtonDown(1))
+        {
+            if(TryGetCursorRaycastPoint(out var point))
+            {
+                Game.Instance.OnRightClick(point);
             }
         }
     }
 
-
-    void PositionCursorObject()
+    public bool TryGetCursorRaycastPoint(out Vector3 point)
     {
+        point = Vector3.zero;
         Ray ray = mainCam.ScreenPointToRay(Input.mousePosition);
         float enter = 0.0f;
         if (terrainPlane.Raycast(ray, out enter))
@@ -143,21 +162,40 @@ public class ContextCursor : MonoBehaviour
             Vector3 hitPoint = ray.GetPoint(enter);
             transform.position = hitPoint;
         }
-
-        if (Physics.Raycast(ray, out RaycastHit hitInfo, 1000.0f, terrainMask))
+        else
         {
-            cursorObject.transform.position = hitInfo.point;
+            return false;
+        }
+
+        if (Physics.Raycast(ray, out RaycastHit hitInfo, 10000000, terrainMask))
+        {
+            point = hitInfo.point;
+            return true;
+        }
+        else
+        {
+            return false;
         }
     }
 
     void DoBuildingContext()
     {
-        PositionCursorObject();
+
         if (Input.GetMouseButtonDown(0))
         {
-            if(/*isValidPlacement() &&*/ Game.Instance.TryPurchase(currentBuildData.cost))
+            if(/*isValidPlacement() &&*/ Game.Instance.TryPurchase(currentBuildData.cost) && TryGetCursorRaycastPoint(out var point))
             {
-                GameObject.Instantiate(currentBuildData.prefab, cursorObject.position, Quaternion.identity);
+                var go = GameObject.Instantiate(currentBuildData.prefab, point, Quaternion.identity);
+                PlayerManifest.Instance.AddBuilding(go.transform);
+            }
+        }
+
+
+        if (Input.GetMouseButtonDown(1))
+        {
+            if (TryGetCursorRaycastPoint(out var point))
+            {
+                Game.Instance.Cancel();
             }
         }
     }
@@ -170,5 +208,57 @@ public class ContextCursor : MonoBehaviour
     void DoUIContext()
     {
 
+    }
+
+    internal void InitialzieBoxSelector(BoxSelectorUI boxSelectorUI)
+    {
+        boxSelectorController = new BoxSelectorController(boxSelectorUI);
+        boxSelectorController.OnReceiveBounds += OnReceiveBounds;
+    }
+
+    void OnReceiveBounds(Bounds b)
+    {
+        List<Transform> units = PlayerManifest.Instance.GetUnitManifest();
+        bool unitSelected = false;
+        for(int i = 0; i < units.Count; i++)
+        {
+            Transform t = units[i];
+            if(b.Contains(mainCam.WorldToViewportPoint(t.position)))
+            {
+                ISelectableObject selectable = t.GetComponent<ISelectableObject>();
+                if (selectable == null)
+                    continue;
+
+                ContextPanelData data = selectable.GetContextPanelData();
+                VisualElement detailRoot = Game.Instance.SetSelectableContextWindow(data.contextWindowButtons, data.infoPanelTemplate, data.icon, data.name);
+                Game.Instance.SetSelectableCommandWindow(data.commandWindowButtons);
+
+                unitSelected = true;
+                selectable.Select(detailRoot);
+                Game.Instance.AddSelectable(selectable);
+            }
+        }
+
+        if(!unitSelected)
+        {
+            List<Transform> buildiings = PlayerManifest.Instance.GetBuildingManifest();
+            for (int i = 0; i < buildiings.Count; i++)
+            {
+                Transform t = buildiings[i];
+                if (b.Contains(mainCam.WorldToViewportPoint(t.position)))
+                {
+                    ISelectableObject selectable = t.GetComponent<ISelectableObject>();
+                    if (selectable == null)
+                        continue;
+
+                    ContextPanelData data = selectable.GetContextPanelData();
+                    VisualElement detailRoot = Game.Instance.SetSelectableContextWindow(data.contextWindowButtons, data.infoPanelTemplate, data.icon, data.name);
+                    Game.Instance.SetSelectableCommandWindow(data.commandWindowButtons);
+
+                    Game.Instance.AddSelectable(selectable);
+                    selectable.Select(detailRoot);
+                }
+            }
+        }
     }
 }

@@ -16,11 +16,14 @@ public class MapPreview : MonoBehaviour
         Noise,
         MeshAndColor,
         Falloff,
+        NavMap,
+        MeshAndNav
     }
 
     public HeightMapSettings heightMapSettings;
     public MeshSettings meshSettings;
     public TextureData textureData;
+    public NavMapSettings navMapSettings;
 
 
     [Range(0, MeshSettings.numSupportedLOD - 1)]
@@ -32,6 +35,7 @@ public class MapPreview : MonoBehaviour
 
     public ComputeShader shader;
     public Material terrainMaterial;
+    public Material navMeshMaterial;
 
     void OnTextureValuesUpdated()
     {
@@ -61,6 +65,12 @@ public class MapPreview : MonoBehaviour
             case DrawMode.Falloff:
                 DrawTexture(TextureGenerator.TextureFromHeightMap(new HeightMap(FalloffGenerator.GenerateFalloffMap(meshSettings.numberOfVerticiesPerLine), 0, 1)));
                 break;
+            case DrawMode.NavMap:
+                DrawTexture(TextureGenerator.TextureFromNavMap(NavMapGenerator.GenerateNavMap(heightMap.values, heightMapSettings.maxHeight, navMapSettings, Vector2Int.zero)));
+                break;
+            case DrawMode.MeshAndNav:
+                DrawMeshWithNavMap(MeshGenerator.GenerateMesh(heightMap.values, meshSettings, editorPreviewLevelOfDetail), TextureGenerator.TextureFromNavMap(NavMapGenerator.GenerateNavMap(heightMap.values, heightMapSettings.maxHeight, navMapSettings, Vector2Int.zero)));
+                break;
 
         }
     }
@@ -80,7 +90,18 @@ public class MapPreview : MonoBehaviour
         meshFilter.sharedMesh = meshData.CreateMesh();
         textureRenderer.gameObject.SetActive(false);
         meshFilter.gameObject.SetActive(true);
+        meshFilter.GetComponent<MeshRenderer>().material = terrainMaterial;
     }
+
+    public void DrawMeshWithNavMap(MeshData meshData, Texture2D texture)
+    {
+        meshFilter.sharedMesh = meshData.CreateMesh();
+        textureRenderer.gameObject.SetActive(false);
+        meshFilter.gameObject.SetActive(true);
+        meshFilter.GetComponent<MeshRenderer>().material = navMeshMaterial;
+        navMeshMaterial.mainTexture = texture;
+    }
+
 
     void OnValuesUpdated()
     {
@@ -107,6 +128,12 @@ public class MapPreview : MonoBehaviour
         {
             textureData.OnValuesUpdated -= OnTextureValuesUpdated;
             textureData.OnValuesUpdated += OnTextureValuesUpdated;
+        }
+
+        if(navMapSettings != null)
+        {
+            navMapSettings.OnValuesUpdated -= OnValuesUpdated;
+            navMapSettings.OnValuesUpdated += OnValuesUpdated;
         }
     }
 

@@ -1,0 +1,4 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+    <ui:VisualElement name="root" style="width: 100%; height: 100%; align-items: flex-end; justify-content: flex-start; flex-direction: row; background-image: none;" />
+    <ui:VisualElement name="debug-active-icon" style="width: 16px; height: 16px; cursor: initial; background-image: url(&apos;/Assets/UI/Images/bug.png&apos;);" />
+</ui:UXML>

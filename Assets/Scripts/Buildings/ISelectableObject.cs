@@ -7,17 +7,17 @@ using UnityEngine.UIElements;
 
 public interface ISelectableObject
 {
-    event EventHandler Remove;
-    ClickableObjectData GetClickableObjectData();
-    void SetInfoPanelRoot(VisualElement root);
+    event EventHandler RemoveFromSelectionList;
+    ContextPanelData GetContextPanelData();
     void Deselect();
     void ContextButtonPressed(int index);
     void CommandButtonPressed(int buttonId);
-    void Select();
+    void Select(VisualElement root);
+    void RightClick(Vector3 rightClickPoint);
 }
 
 [System.Serializable]
-public struct ClickableObjectData
+public struct ContextPanelData
 {
     public WindowButtonsData contextWindowButtons;
     public VisualTreeAsset infoPanelTemplate;

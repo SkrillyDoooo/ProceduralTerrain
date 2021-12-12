@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 1933630335447254651}
   - component: {fileID: 6045616988738649237}
   - component: {fileID: 8260551002671889519}
+  - component: {fileID: 5906826401413504605}
   m_Layer: 9
   m_Name: WatchTower
   m_TagString: Untagged
@@ -97,6 +98,19 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0.000000059604645, y: 0, z: -0.00000008940697}
+--- !u!114 &5906826401413504605
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 945291145010141141}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a94d3b9aebd79e744992d96571272cdb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  asset: {fileID: 9197481963319205126, guid: 1ef749dd96e435f458d83c97f4765d7f, type: 3}
 --- !u!1001 &4184580478946606773
 PrefabInstance:
   m_ObjectHideFlags: 0

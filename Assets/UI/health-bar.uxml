@@ -1,0 +1,8 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+    <ui:VisualElement name="health-bar-container" picking-mode="Ignore" usage-hints="DynamicTransform" class="health-container">
+        <Style src="/Assets/health-bar.uss" />
+        <ui:VisualElement name="health-bar-border" picking-mode="Ignore" class="health-border">
+            <ui:VisualElement name="health-bar-value" picking-mode="Ignore" class="health-value" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

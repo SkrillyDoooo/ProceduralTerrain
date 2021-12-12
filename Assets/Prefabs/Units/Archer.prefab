@@ -13,6 +13,8 @@ GameObject:
   - component: {fileID: 4594658152961955845}
   - component: {fileID: 4594658152961955844}
   - component: {fileID: -8910445144818235776}
+  - component: {fileID: 3638503473372903673}
+  - component: {fileID: -8024198372319351851}
   m_Layer: 0
   m_Name: Archer
   m_TagString: Untagged
@@ -110,7 +112,43 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 59a47563bd8278e45bb1df610dba84da, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  data: {fileID: 11400000, guid: 83a2165d78ac8d749a28086589038d6f, type: 2}
   speed: 30
+  settings: {fileID: 11400000, guid: 3bfa8c21fa9b2d14ab0bcd110120aae8, type: 2}
+  debug: 0
+--- !u!114 &3638503473372903673
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4594658152961955843}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4fec87995dc817241819f86b7a47f90d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  contextPanelData:
+    contextWindowButtons: {fileID: 11400000, guid: 126ed8ea3e499ad44b0fee049e6c7a35,
+      type: 2}
+    infoPanelTemplate: {fileID: 0}
+    icon: {fileID: 2800000, guid: 6faadf6da81a51c4ba936a63420c2048, type: 3}
+    name: Archer
+    commandWindowButtons: {fileID: 11400000, guid: 51daf8c0aaf135549b815dcc46d276a3,
+      type: 2}
+--- !u!114 &-8024198372319351851
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4594658152961955843}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a94d3b9aebd79e744992d96571272cdb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  asset: {fileID: 9197481963319205126, guid: 1ef749dd96e435f458d83c97f4765d7f, type: 3}
 --- !u!1001 &7954875043661839413
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -181,12 +219,12 @@ PrefabInstance:
     - target: {fileID: 5258806320208320316, guid: f56bd66c136c7b34885f9c8a2479d903,
         type: 3}
       propertyPath: m_OrthographicSize
-      value: 1.5
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 5258806320208320316, guid: f56bd66c136c7b34885f9c8a2479d903,
         type: 3}
       propertyPath: m_FarClipPlane
-      value: 4
+      value: 5
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f56bd66c136c7b34885f9c8a2479d903, type: 3}

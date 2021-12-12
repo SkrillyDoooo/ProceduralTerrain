@@ -1,117 +1,56 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Security.Policy;
-using System.Security.Principal;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UIElements;
 
-public class ProductionBuildingUI : MonoBehaviour, ISelectableObject
+public class ProductionBuildingUI : MonoBehaviour
 {
 
     [SerializeField]
-    private ClickableObjectData clickableData;
+    private ContextPanelData contextPanelData;
 
     VisualElement infoPanelUI;
     List<Button> productionQueueButtons;
     VisualElement progressBar;
     VisualElement progressBarBackground;
     const int maxProduction = 5;
-    ProductionBuilding productionBuilding;
-    SelectionComponent selection;
     Length progressBarLength;
-    bool selected = false;
-    public event EventHandler Remove;
 
-    void Start()
-    {
-        productionBuilding = GetComponent<ProductionBuilding>();
-        productionBuilding.UnitComplete += UnitComplete;
-        selection = GetComponentInChildren<SelectionComponent>();
-        selection.SetProjectorActive(false);
-    }
+    public event System.Action<int> CancelItem;
 
-    void Update()
-    {
-        if(selected && progressBar != null)
-        {
-            UpdateProgress();
-        }
-    }
-
-    private void UnitComplete()
-    {
-        UpdateProductionButtons();
-    }
-
-    enum CommandButtonIds
+    public enum CommandButtonIds
     {
         Destroy = 6
     }
 
     void CancelItemCallback(ClickEvent evt)
     {
+        if (evt.target is Button button)
         {
-            if (evt.target is Button button)
-            {
-                int index = productionQueueButtons.IndexOf(button);
-                if (index < productionBuilding.productionQueueCount)
-                {
-                    RemoveItem(index);
-                }
-            }
+            int index = productionQueueButtons.IndexOf(button);
+            CancelItem(index);
         }
     }
 
-    private void AddItem(int optionIndex)
+    public ContextPanelData GetContextPanelData()
     {
-        if (productionBuilding.productionQueueCount >= maxProduction)
-            return;
-
-        if (!productionBuilding.TryAddItem(optionIndex))
-            return;
-        UpdateProductionButtons();
+        return contextPanelData;
     }
 
-    private void RemoveItem(int index)
+    public void UpdateProgress(float currentProgress)
     {
-        if (productionBuilding.productionQueueCount == 0)
-            return;
-
-        productionBuilding.RemoveItem(index);
-        UpdateProductionButtons();
+        if(progressBar != null)
+        {
+            progressBarLength.value = currentProgress * 100;
+            progressBar.style.width = progressBarLength;
+        }
     }
 
-    public ClickableObjectData GetClickableObjectData()
+    public void UpdateProductionButtons(UnitInfo[] queue)
     {
-        return clickableData;
-    }
-
-    // remove and set up base class for production building Info panel that can handle multi-selection of buildings
-    public void SetInfoPanelRoot(VisualElement root)
-    {
-        infoPanelUI = root;
-        productionQueueButtons = infoPanelUI.Query<Button>(name: "button").ToList();
-        progressBarLength = new Length(0, LengthUnit.Percent);
-        progressBar = infoPanelUI.Query<VisualElement>(className: "progress");
-
-        infoPanelUI.RegisterCallback<ClickEvent>(CancelItemCallback);
-
-        UpdateProgress();
-        UpdateProductionButtons();
-    }
-
-    private void UpdateProgress()
-    {
-        progressBarLength.value = productionBuilding.currentProgress * 100;
-        progressBar.style.width = progressBarLength;
-    }
-
-    private void UpdateProductionButtons()
-    {
-        Unit[] queue = productionBuilding.GetCurrentProductionArray();
         int i = 0;
         for(i = 0; i < queue.Length; i++)
         {
@@ -127,38 +66,18 @@ public class ProductionBuildingUI : MonoBehaviour, ISelectableObject
     public void Deselect()
     {
         infoPanelUI.UnregisterCallback<ClickEvent>(CancelItemCallback);
-        selected = false;
-        selection.SetProjectorActive(false);
     }
 
-    public void ContextButtonPressed(int index)
+    public void Select(VisualElement root, UnitInfo[] queue, float currentProgress)
     {
-        AddItem(index);
-    }
+        infoPanelUI = root;
+        productionQueueButtons = infoPanelUI.Query<Button>(name: "button").ToList();
+        progressBarLength = new Length(0, LengthUnit.Percent);
+        progressBar = infoPanelUI.Query<VisualElement>(className: "progress");
 
-    public void CommandButtonPressed(int buttonId)
-    {
-        switch(buttonId)
-        {
-            case ((int)CommandButtonIds.Destroy):
-                Demolish();
-                break;
-        }
-    }
+        infoPanelUI.RegisterCallback<ClickEvent>(CancelItemCallback);
 
-    public void Demolish()
-    {
-        Remove.Invoke(this, new EventArgs());
-        selection.SetProjectorActive(false);
-
-        productionBuilding.Demolish();
-        Destroy(productionBuilding);
-        Destroy(gameObject, 0.2f);
-    }
-
-    public void Select()
-    {
-        selected = true;
-        selection.SetProjectorActive(true);
+        UpdateProgress(currentProgress);
+        UpdateProductionButtons(queue);
     }
 }

@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
 using System;
+using UnityEngine.AI;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 public class TerrainChunk
 {
@@ -22,15 +24,19 @@ public class TerrainChunk
 
     HeightMap heightMap;
     bool heightMapReceived;
+
+    NavMap navMap;
+    bool navMapReceived;
     int previousLODIndex = -1;
 
     MeshSettings meshSettings;
     HeightMapSettings heightMapSettings;
+    NavMapSettings navMapSettings;
     Transform viewer;
     Transform colliderPOI;
     float maxViewDst;
 
-    public TerrainChunk(Vector2 coord, HeightMapSettings heightMapSettings, MeshSettings meshSettings, LODInfo[] detailLevels, int colliderLODIndex, Material material, Transform viewer, Transform colliderPOI, Transform parentObjectEditorOnly)
+    public TerrainChunk(Vector2 coord, HeightMapSettings heightMapSettings, MeshSettings meshSettings, NavMapSettings navMapSettings, LODInfo[] detailLevels, int colliderLODIndex, Material material, Transform viewer, Transform colliderPOI, Transform parentObjectEditorOnly)
     {
         this.coordinate = coord;
         this.detailLevels = detailLevels;
@@ -42,6 +48,8 @@ public class TerrainChunk
         this.meshSettings = meshSettings;
         this.viewer = viewer;
         this.colliderPOI = colliderPOI;
+
+        this.navMapSettings = navMapSettings;
 
         meshObject = new GameObject("Terrain Chunk");
         meshObject.layer = LayerMask.NameToLayer("Terrain");
@@ -58,8 +66,6 @@ public class TerrainChunk
             meshObject.transform.parent = parentObjectEditorOnly.transform;
 #endif
         SetVisible(false);
-
-
 
         LODMeshes = new LODMesh[detailLevels.Length];
 
@@ -82,6 +88,68 @@ public class TerrainChunk
         }
     }
 
+    public bool TryGetNavMap(out NavMap nav)
+    {
+        nav = navMapReceived ? navMap : default;
+        return navMapReceived   ;
+    }
+
+
+    public bool TryGetHeightMap(out HeightMap height)
+    {
+        height = heightMapReceived ? heightMap : default;
+        return heightMapReceived;
+    }
+
+    public Vector2Int GetHeightMapIndexAtPoint(Vector2 point)
+    {
+        Vector3 topLeftVector = new Vector3(-1, 0, 1) * (meshSettings.meshWorldSize) / 2f;
+        Vector3 worldCenter = new Vector3(coordinate.x * meshSettings.meshWorldSize, 0, coordinate.y * meshSettings.meshWorldSize);
+        Vector3 topLeft = worldCenter + topLeftVector;
+        Vector3 worldPoint = new Vector3(point.x, 0, point.y);
+
+        Debug.DrawRay(topLeft, Vector3.up * 1000, Color.red);
+        Debug.DrawRay(worldCenter, Vector3.up * 1000, Color.green);
+
+        Vector3 worldPointTexCoord = (worldPoint - topLeft);
+        Vector3 worldPointDebugRayStart = (Vector3.up * 200) + topLeft;
+        Vector3 worldPointDebugRayDir = ((Vector3.up * 200) + worldPoint) - worldPointDebugRayStart;
+        Debug.DrawRay(worldPointDebugRayStart, worldPointDebugRayDir, Color.magenta);
+
+        int x = Mathf.RoundToInt((Mathf.Clamp01(worldPointTexCoord.x / meshSettings.meshWorldSize) * (heightMap.values.GetLength(0) - 1)));
+        int y = Mathf.RoundToInt((Mathf.Clamp01(-worldPointTexCoord.z / meshSettings.meshWorldSize) * (heightMap.values.GetLength(1) - 1)));
+
+        return new Vector2Int(x, y);
+    }
+
+    public Vector2Int GetNavMapIndexAtPoint(Vector2 point)
+    {
+        Vector3 topLeftVector = new Vector3(-1, 0, 1) * (meshSettings.meshWorldSize) / 2f;
+        Vector3 worldCenter = new Vector3(coordinate.x * meshSettings.meshWorldSize, 0,coordinate.y * meshSettings.meshWorldSize);
+        Vector3 topLeft = worldCenter + topLeftVector;
+        Vector3 worldPoint = new Vector3(point.x, 0, point.y);
+
+        Debug.DrawRay(topLeft, Vector3.up * 1000, Color.red);
+        Debug.DrawRay(worldCenter, Vector3.up * 1000, Color.green);
+
+        Vector3 worldPointTexCoord = (worldPoint - topLeft);
+        Vector3 worldPointDebugRayStart = (Vector3.up * 200) + topLeft;
+        Vector3 worldPointDebugRayDir = ((Vector3.up * 200) + worldPoint) - worldPointDebugRayStart;
+        Debug.DrawRay(worldPointDebugRayStart, worldPointDebugRayDir, Color.magenta);
+
+        int x = Mathf.RoundToInt((Mathf.Clamp01(worldPointTexCoord.x / meshSettings.meshWorldSize) * (navMap.values.GetLength(0) - 1)));
+        int y = Mathf.RoundToInt((Mathf.Clamp01(-worldPointTexCoord.z / meshSettings.meshWorldSize) * (navMap.values.GetLength(1) - 1)));
+
+        return new Vector2Int(x, y);
+    }
+
+    public float GetHeightAtCoord(Vector2 point)
+    {
+        Vector2Int t = GetHeightMapIndexAtPoint(point);
+        float value = heightMap.values[t.x, t.y];
+        return value;
+    }
+
     Vector2 colliderPOIPosition
     {
         get
@@ -101,8 +169,15 @@ public class TerrainChunk
     {
         this.heightMap = (HeightMap)heightMapObject;
         heightMapReceived = true;
+        ThreadedDataRequester.RequestData(() => NavMapGenerator.GenerateNavMap(heightMap.values, heightMapSettings.maxHeight , navMapSettings, new Vector2Int((int)coordinate.x, (int)coordinate.y)), OnNavMapReceived);
 
         UpdateTerrainChunk();
+    }
+
+    void OnNavMapReceived(object navMapObject)
+    {
+        this.navMap = (NavMap)navMapObject;
+        navMapReceived = true;
     }
 
     void OnMeshDataReceived(MeshData meshData)
@@ -193,6 +268,7 @@ public class TerrainChunk
     }
 }
 
+
 class LODMesh
 {
     public Mesh mesh;
@@ -212,6 +288,7 @@ class LODMesh
         hasMesh = true;
         updateCallback();
     }
+
     public void RequestMesh(HeightMap heightMap, MeshSettings meshSettings)
     {
         hasRequestedMesh = true;

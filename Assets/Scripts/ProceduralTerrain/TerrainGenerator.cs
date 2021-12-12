@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -16,6 +17,8 @@ public class TerrainGenerator : MonoBehaviour
     public MeshSettings meshSettings;
     public HeightMapSettings heightSettings;
     public TextureData textureSettings;
+    public NavMapSettings navMapSettings;
+
     public Transform colliderPOI;
 
     Vector2 colliderPOIPos;
@@ -27,12 +30,37 @@ public class TerrainGenerator : MonoBehaviour
     float meshWorldSize;
     int chunksVisibleInViewDist;
     public int colliderLODIndex;
+    HashSet<Vector2> updatedChunkCoords;
+
+    public RenderTexture navMapDebug;
+    public bool m_DebugNavMap = true;
+    public DebugUI debugUI;
 
     Dictionary<Vector2, TerrainChunk> terrainChunkDictionary = new Dictionary<Vector2, TerrainChunk>();
     List<TerrainChunk> visibleTerrainChunks = new List<TerrainChunk>();
 
+    private static TerrainGenerator m_Instance;
+
+    public float MaxHeight
+    {
+        get
+        {
+            return heightSettings.maxHeight;
+        }
+    }
+
+    public static TerrainGenerator Instance
+    {
+        get
+        {
+            if (m_Instance == null)
+                m_Instance = FindObjectOfType<TerrainGenerator>();
+            return m_Instance;
+        }
+    }
+
     public static GameObject m_ParentObjectEditorOnly;
-    // Start is called before the first frame update
+
     void Start()
     {
         textureSettings.ApplyToMaterial(terrainMaterial);
@@ -45,8 +73,12 @@ public class TerrainGenerator : MonoBehaviour
         float maxViewDist = detailLevels[detailLevels.Length - 1].visibleDistanceThreshold;
         chunksVisibleInViewDist = Mathf.RoundToInt(maxViewDist / meshWorldSize);
 
-
+        updatedChunkCoords = new HashSet<Vector2>();
         UpdateVisibleChunks();
+        int rtDimension = (meshSettings.numberOfVerticiesPerLine - 1) / navMapSettings.skipIncrement + 1;
+        navMapDebug = new RenderTexture(rtDimension, rtDimension, 1);
+
+        debugUI.SetRenderTexture(navMapDebug);
     }
 
     // Update is called once per frame
@@ -54,6 +86,9 @@ public class TerrainGenerator : MonoBehaviour
     {
         viewerPos = new Vector2(viewer.position.x, viewer.position.z);
         colliderPOIPos = new Vector2(colliderPOI.position.x, colliderPOI.position.z);
+        if(m_DebugNavMap)
+            DebugNavMap();
+
         if (colliderPOIPos != colliderPOIOld)
         {
             foreach(TerrainChunk chunk in visibleTerrainChunks)
@@ -71,10 +106,60 @@ public class TerrainGenerator : MonoBehaviour
         }
     }
 
+    void DebugNavMap()
+    {
+        RenderTexture currentActiveRT = RenderTexture.active;
+        RenderTexture.active = navMapDebug;
+        if(TryGetTerrainChunkClosestToPoint(colliderPOIPos, out TerrainChunk chunk) && chunk.TryGetHeightMap(out HeightMap height) && chunk.TryGetNavMap(out NavMap nav))
+        {
+            debugUI.SetCoordinateLabel((int)chunk.coordinate.x, (int)chunk.coordinate.y);
+            Graphics.Blit(TextureGenerator.TextureFromNavMapWithBlip(nav, height, chunk.GetNavMapIndexAtPoint(colliderPOIPos)), navMapDebug);
+        }
+
+        RenderTexture.active = currentActiveRT;
+    }
+
+    public bool TryGetNavMapAtCoordinate(Vector2 coord, out NavMap nav)
+    {
+        nav = default;
+        return terrainChunkDictionary.TryGetValue(coord, out TerrainChunk chunk) && chunk.TryGetNavMap(out nav);
+    }
+
+    public bool TryGetNavMapAtWorldPoint(Vector2 point, out NavMap nav, out Vector2Int Index)
+    {
+        nav = default;
+        Index = Vector2Int.zero;
+        int currentChunkCoordX = Mathf.RoundToInt(point.x / meshWorldSize);
+        int currentChunkCoordY = Mathf.RoundToInt(point.y / meshWorldSize);
+        if(terrainChunkDictionary.TryGetValue(new Vector2(currentChunkCoordX, currentChunkCoordY), out TerrainChunk chunk) && chunk.TryGetNavMap(out nav))
+        {
+            Index = chunk.GetNavMapIndexAtPoint(point);
+            return true;
+        }
+        return false;
+    }
+
+
+    bool TryGetTerrainChunkClosestToPoint(Vector2 point, out TerrainChunk terrainChunk)
+    {
+        int currentChunkCoordX = Mathf.RoundToInt(point.x / meshWorldSize);
+        int currentChunkCoordY = Mathf.RoundToInt(point.y / meshWorldSize);
+        return terrainChunkDictionary.TryGetValue(new Vector2(currentChunkCoordX, currentChunkCoordY), out terrainChunk);
+    }
+
+    public float GetHeightAtCoord(Vector2 point)
+    {
+        if(TryGetTerrainChunkClosestToPoint(point, out var chunk))
+        {
+            return chunk.GetHeightAtCoord(point);
+        }
+        Debug.Log("Could not get height at point because the corresponding TerrainChunk does not exist");
+        return 0.0f;
+    }
+
     void UpdateVisibleChunks()
     {
-
-        HashSet<Vector2> updatedChunkCoords = new HashSet<Vector2>();
+        updatedChunkCoords.Clear();
         for(int i = visibleTerrainChunks.Count - 1; i >= 0  ; i--)
         {
             updatedChunkCoords.Add(visibleTerrainChunks[i].coordinate);
@@ -84,7 +169,7 @@ public class TerrainGenerator : MonoBehaviour
         int currentChunkCoordX = Mathf.RoundToInt(viewerPos.x / meshWorldSize);
         int currentChunkCoordY = Mathf.RoundToInt(viewerPos.y / meshWorldSize);
 
-        for(int yOffset = - chunksVisibleInViewDist; yOffset <= chunksVisibleInViewDist; yOffset++)
+        for(int yOffset = -chunksVisibleInViewDist; yOffset <= chunksVisibleInViewDist; yOffset++)
         {
             for (int xOffset = -chunksVisibleInViewDist; xOffset <= chunksVisibleInViewDist; xOffset++)
             {
@@ -99,12 +184,11 @@ public class TerrainGenerator : MonoBehaviour
                 }
                 else
                 {
-                    TerrainChunk terrainChunk = new TerrainChunk(viewedChunkCoord, heightSettings, meshSettings, detailLevels, colliderLODIndex, terrainMaterial, viewer, colliderPOI, m_ParentObjectEditorOnly.transform);
+                    TerrainChunk terrainChunk = new TerrainChunk(viewedChunkCoord, heightSettings, meshSettings, navMapSettings, detailLevels, colliderLODIndex, terrainMaterial, viewer, colliderPOI, m_ParentObjectEditorOnly.transform);
                     terrainChunk.onVisibilityChanged += OnTerrainChunkVisibilityChanged;
                     terrainChunkDictionary.Add(viewedChunkCoord, terrainChunk);
                     terrainChunk.Load();
                 }
-
             }
         }
     }

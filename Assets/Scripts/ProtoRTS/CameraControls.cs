@@ -90,7 +90,6 @@ public class CameraControls : MonoBehaviour
         if (RTSMode) transform.Translate(panMovement, Space.World);
         else if (FlyCameraMode) transform.Translate(panMovement, Space.Self);
 
-
         //increase pan speed
         if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.S)
             || Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.D)

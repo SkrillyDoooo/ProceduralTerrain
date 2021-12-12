@@ -12,17 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3f3aea5652dd0d44e9a0d7820faa1a59, type: 3}
   m_Name: HeightMapSettings
   m_EditorClassIdentifier: 
-  autoUpdate: 1
+  autoUpdate: 0
   noiseSettings:
     normalizeMode: 1
-    scale: 92.2
+    scale: 350
     octaves: 6
     persistance: 0.443
     lacunarity: 2.3
     seed: 0
     offset: {x: 0, y: 0}
   applyFalloffMap: 0
-  heightMultiplier: 48.23
+  heightMultiplier: 64.4
   heightCurve:
     serializedVersion: 2
     m_Curve:
