@@ -4,6 +4,10 @@ using UnityEngine;
 
 public static class HeightMapGenerator
 {
+
+    public static float minValue = float.MaxValue;
+    public static float maxValue = float.MinValue;
+
     public static HeightMap GenerateHeightMap(int width, int height, HeightMapSettings settings, Vector2 sampleCenter)
     {
         AnimationCurve heightCurve_threadsafe = new AnimationCurve(settings.heightCurve.keys);
@@ -18,14 +22,15 @@ public static class HeightMapGenerator
             {
                 values[i, j] *= heightCurve_threadsafe.Evaluate(values[i, j]) * settings.heightMultiplier;
 
-                if(values[i,j] > maxValue)
+                if(values[i,j] > HeightMapGenerator.maxValue)
                 {
-                    maxValue = values[i, j];
+                    HeightMapGenerator.maxValue = values[i, j];
+
                 }
 
-                if(values[i,j] < minValue)
+                if(values[i,j] < HeightMapGenerator.minValue)
                 {
-                    minValue = values[i, j];
+                    HeightMapGenerator.minValue = values[i, j];
                 }
             }
         }

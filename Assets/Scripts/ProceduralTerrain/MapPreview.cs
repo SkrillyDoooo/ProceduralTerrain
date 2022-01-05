@@ -2,138 +2,136 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Tilemaps;
 
 public class MapPreview : MonoBehaviour
 {
-    public Renderer textureRenderer;
-    public MeshFilter meshFilter;
-    public MeshRenderer meshRenderer;
-
+    public Renderer[] textureRenderers;
     public bool DisableOnEnterPlaymode;
 
     public enum DrawMode
     {
         Noise,
-        MeshAndColor,
-        Falloff,
+        SimpleTerrainColor,
         NavMap,
-        MeshAndNav
+        TileMap
     }
 
     public HeightMapSettings heightMapSettings;
-    public MeshSettings meshSettings;
-    public TextureData textureData;
-    public NavMapSettings navMapSettings;
-
-
-    [Range(0, MeshSettings.numSupportedLOD - 1)]
-    public int editorPreviewLevelOfDetail;
+    public TerrainGridSettings terrainGridSettings;
+    public TileMapData tileMapData;
 
     public bool autoUpdate = true;
-
     public DrawMode drawMode;
+    private NavigationNodePool navigationNodePool;
+    public NavMapPreview navMapPreview;
 
-    public ComputeShader shader;
-    public Material terrainMaterial;
-    public Material navMeshMaterial;
+    public Tilemap tileMap;
 
-    void OnTextureValuesUpdated()
-    {
-        textureData.ApplyToMaterial(terrainMaterial);
-    }
 
+    public float scale;
     void Start()
     {
-        meshRenderer.gameObject.SetActive(!DisableOnEnterPlaymode);
-        textureRenderer.gameObject.SetActive(!DisableOnEnterPlaymode);
+        SetRenderersActive(!DisableOnEnterPlaymode);
+        navigationNodePool = new NavigationNodePool();
     }
 
     public void DrawMapInEditor()
     {
-        textureData.UpdateMeshHeights(terrainMaterial, heightMapSettings.minHeight, heightMapSettings.maxHeight);
-        textureData.ApplyToMaterial(terrainMaterial);
-        HeightMap heightMap = HeightMapGenerator.GenerateHeightMap(meshSettings.numberOfVerticiesPerLine, meshSettings.numberOfVerticiesPerLine, heightMapSettings, Vector2.zero);
-
-        switch (drawMode)
+        int index = 0;
+        navigationNodePool = new NavigationNodePool();
+        HeightMap[] maps = new HeightMap[9];
+        for(int x = -1; x <= 1; x++)
         {
-            case DrawMode.Noise:
-                DrawTexture(TextureGenerator.TextureFromHeightMap(heightMap));
-                break;
-            case DrawMode.MeshAndColor:
-                DrawMesh(MeshGenerator.GenerateMesh(heightMap.values, meshSettings, editorPreviewLevelOfDetail));
-                break;
-            case DrawMode.Falloff:
-                DrawTexture(TextureGenerator.TextureFromHeightMap(new HeightMap(FalloffGenerator.GenerateFalloffMap(meshSettings.numberOfVerticiesPerLine), 0, 1)));
-                break;
-            case DrawMode.NavMap:
-                DrawTexture(TextureGenerator.TextureFromNavMap(NavMapGenerator.GenerateNavMap(heightMap.values, heightMapSettings.maxHeight, navMapSettings, Vector2Int.zero)));
-                break;
-            case DrawMode.MeshAndNav:
-                DrawMeshWithNavMap(MeshGenerator.GenerateMesh(heightMap.values, meshSettings, editorPreviewLevelOfDetail), TextureGenerator.TextureFromNavMap(NavMapGenerator.GenerateNavMap(heightMap.values, heightMapSettings.maxHeight, navMapSettings, Vector2Int.zero)));
-                break;
+            for(int y = -1; y <= 1; y++, index++)
+            {
+                    Vector2 chunkcoord = new Vector2(x,y);
+                    maps[index] =  HeightMapGenerator.GenerateHeightMap(terrainGridSettings.dimensions, terrainGridSettings.dimensions, heightMapSettings, chunkcoord * terrainGridSettings.dimensions); 
+            }
+        }
 
+        index = 0;
+        for(int x = -1; x <= 1; x++)
+        {
+            for(int y = -1; y <= 1; y++, index++)
+            {
+                    Vector2Int chunkcoordInt = new Vector2Int(x,y);
+                    HeightMap heightMap = maps[index];
+                    TerrainGrid grid = TerrainGridGenerator.GenerateTerrainGridFromHeightMap(heightMap.values, terrainGridSettings, heightMapSettings.maxHeight);
+                    switch (drawMode)
+                    {
+                        case DrawMode.Noise:
+                            DrawTexture(TextureGenerator.TextureFromHeightMap(heightMap), index, x, y);
+                            break;
+                        case DrawMode.SimpleTerrainColor:
+                            DrawTexture(TextureGenerator.TextureFromTerrainGrid(grid), index, x, y);
+                            break;
+                        case DrawMode.NavMap:
+                            SetRenderersActive(false);
+                            NavMapChunk navMap = new NavMapChunk(grid.values, terrainGridSettings.dimensions, chunkcoordInt, navigationNodePool);
+                            navMapPreview.SetNavMap(navigationNodePool, scale, navMap.levels, heightMap.values.GetLength(0));
+                            DrawTilemap(tileMapData.GenerateChunk(grid), chunkcoordInt);
+                            break;
+                        case DrawMode.TileMap:
+                            SetRenderersActive(false);
+                            DrawTilemap(tileMapData.GenerateChunk(grid), chunkcoordInt);
+                            break;
+                    }
+            }
+        }
+        
+    }
+
+    public void DrawTilemap(TileBase[] tileBase, Vector2Int coord)
+    {
+        Vector2Int topLeft = new Vector2Int(-1, 1) * terrainGridSettings.dimensions + coord * terrainGridSettings.dimensions;
+        for (int y = 0; y < terrainGridSettings.dimensions; y++)
+        {
+            for (int x = 0; x < terrainGridSettings.dimensions; x++)
+            {
+                tileMap.SetEditorPreviewTile(new Vector3Int(topLeft.x + x, topLeft.y - y, 0) + new Vector3Int(terrainGridSettings.dimensions/2, -terrainGridSettings.dimensions/2, 0), tileBase[y * terrainGridSettings.dimensions + x]);
+            }
         }
     }
 
-
-    public void DrawTexture(Texture2D texture)
+    public void DrawTexture(Texture2D texture, int index, int x, int y)
     {
-        textureRenderer.sharedMaterial.mainTexture = texture;
-        textureRenderer.transform.localScale = new Vector3(texture.width/10f, 1, texture.height/10f);
+        Renderer renderer = textureRenderers[index];
+        renderer.sharedMaterial.mainTexture = texture;
+        renderer.transform.localScale = Vector3.one * terrainGridSettings.terrainWorldSize;
+        renderer.transform.position = new Vector3(x * terrainGridSettings.terrainWorldSize,0,y * terrainGridSettings.terrainWorldSize);
 
-        textureRenderer.gameObject.SetActive(true);
-        meshFilter.gameObject.SetActive(false);
+        renderer.gameObject.SetActive(true);
     }
 
-    public void DrawMesh(MeshData meshData)
+    void SetRenderersActive(bool active)
     {
-        meshFilter.sharedMesh = meshData.CreateMesh();
-        textureRenderer.gameObject.SetActive(false);
-        meshFilter.gameObject.SetActive(true);
-        meshFilter.GetComponent<MeshRenderer>().material = terrainMaterial;
+        foreach(var renderer in textureRenderers)
+        {
+            renderer.gameObject.SetActive(active);
+        }
     }
-
-    public void DrawMeshWithNavMap(MeshData meshData, Texture2D texture)
-    {
-        meshFilter.sharedMesh = meshData.CreateMesh();
-        textureRenderer.gameObject.SetActive(false);
-        meshFilter.gameObject.SetActive(true);
-        meshFilter.GetComponent<MeshRenderer>().material = navMeshMaterial;
-        navMeshMaterial.mainTexture = texture;
-    }
-
 
     void OnValuesUpdated()
     {
         if (!Application.isPlaying)
         {
+            tileMap.ClearAllEditorPreviewTiles();
             DrawMapInEditor();
         }
     }
     private void OnValidate()
     {
-        if (meshSettings != null)
-        {
-            meshSettings.OnValuesUpdated -= OnValuesUpdated;
-            meshSettings.OnValuesUpdated += OnValuesUpdated;
-        }
-
         if (heightMapSettings != null)
         {
             heightMapSettings.OnValuesUpdated -= OnValuesUpdated;
             heightMapSettings.OnValuesUpdated += OnValuesUpdated;
         }
 
-        if (textureData != null)
+        if(terrainGridSettings != null)
         {
-            textureData.OnValuesUpdated -= OnTextureValuesUpdated;
-            textureData.OnValuesUpdated += OnTextureValuesUpdated;
-        }
-
-        if(navMapSettings != null)
-        {
-            navMapSettings.OnValuesUpdated -= OnValuesUpdated;
-            navMapSettings.OnValuesUpdated += OnValuesUpdated;
+            terrainGridSettings.OnValuesUpdated -= OnValuesUpdated;
+            terrainGridSettings.OnValuesUpdated += OnValuesUpdated;
         }
     }
 

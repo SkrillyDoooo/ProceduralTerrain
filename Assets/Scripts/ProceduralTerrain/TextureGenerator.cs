@@ -22,70 +22,29 @@ public static class TextureGenerator
         Texture2D texture = new Texture2D(width, height);
 
         Color[] colorMap = new Color[width * height];
+
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < height; x++)
             {
-                colorMap[y * width + x] = Color.Lerp(Color.black, Color.white, Mathf.InverseLerp(heightMap.minValue, heightMap.maxValue, heightMap.values[x, y]));
+                colorMap[y * width + x] = Color.Lerp(Color.black, Color.white, Mathf.InverseLerp(HeightMapGenerator.minValue, HeightMapGenerator.maxValue, heightMap.values[x, y]));
             }
         }
 
         return TextureFromColorMap(colorMap, width, height);
     }
 
-    public static Texture2D TextureFromNavMap(NavMap navMap)
+    public static Texture2D TextureFromTerrainGrid(TerrainGrid grid)
     {
-        int width = navMap.values.GetLength(0);
-        int height = navMap.values.GetLength(1);
+        int width = grid.values.GetLength(0);
+        int height = grid.values.GetLength(1);
 
         Color[] colorMap = new Color[width * height];
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
-                Color color = Color.white;
-                for(int i = 0; i < navMap.abstractPathFindingTree.children.Length; i++)
-                {
-                    if(navMap.abstractPathFindingTree.children[i].ContainsTraversableTile(new Vector2Int(x, y)))
-                    {
-                        color = MinimalAbstractPathFindingTree.chunkColor[i % MinimalAbstractPathFindingTree.chunkColor.Length];
-                    }
-                }
-                colorMap[y * width + x] = navMap.values[x, y] ? color : Color.black;
-            }
-        }
-
-        return TextureFromColorMap(colorMap, width, height);
-    }
-
-    public static Texture2D TextureFromNavMapWithBlip(NavMap navMap, HeightMap heightMap, Vector2Int index)
-    {
-        int width = navMap.values.GetLength(0);
-        int height = navMap.values.GetLength(1);
-
-        Texture2D texture = new Texture2D(width, height,TextureFormat.RGBA32, 0, true);
-
-        Color[] colorMap = new Color[width * height];
-        for (int y = 0, j = height - 1; y < height; y++, j--)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                if(x == index.x && y == index.y)
-                {
-                    colorMap[j * width + x] = Color.red;
-                }
-                else
-                {
-                    Color color = Color.white;
-                    for (int i = 0; i < navMap.abstractPathFindingTree.children.Length; i++)
-                    {
-                        if (navMap.abstractPathFindingTree.children[i].ContainsTraversableTile(new Vector2Int(x, y)))
-                        {
-                            color = MinimalAbstractPathFindingTree.chunkColor[i % MinimalAbstractPathFindingTree.chunkColor.Length];
-                        }
-                    }
-                    colorMap[j * width + x] = navMap.values[x, y] ? color : Color.black;
-                }
+                colorMap[y * width + x] = TerrainGridGenerator.colorMap[grid.values[x, y]];
             }
         }
 

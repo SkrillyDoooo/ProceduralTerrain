@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: MeshSettings
   m_EditorClassIdentifier: 
   autoUpdate: 1
-  meshScale: 1
+  meshScale: 10
   useFlatShading: 0
   generateColliderAroundColliderPOI: 1
-  chunkSizeIndex: 5
-  chunkSizeFlatShadedIndex: 2
+  chunkSizeIndex: 0
+  chunkSizeFlatShadedIndex: 0

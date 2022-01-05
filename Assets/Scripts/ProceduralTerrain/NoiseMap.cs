@@ -30,8 +30,6 @@ public static class Noise
             amplitude *= settings.persistance;
         }
 
-
-
         float maxLocalHeight = float.MinValue;
         float minLocalHeight = float.MaxValue;
         float halfWidth = mapWidth / 2.0f;
@@ -69,8 +67,8 @@ public static class Noise
                 noiseMap[x, y] = noiseHeight;
                 if (settings.normalizeMode == NormalizeMode.Global)
                 {
-                    float normalizedHeight = (noiseMap[x, y] + 1) / (2f * maxPossibleHeight / 2f);
-                    noiseMap[x, y] = Mathf.Clamp(normalizedHeight, 0, int.MaxValue);
+                    float normalizedHeight = (noiseMap[x, y] + 1) / (maxPossibleHeight / 0.5f);
+                    noiseMap[x, y] = normalizedHeight; Mathf.Clamp(normalizedHeight, 0, int.MaxValue);
                 }
             }
         }

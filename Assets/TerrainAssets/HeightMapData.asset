@@ -9,20 +9,20 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3f3aea5652dd0d44e9a0d7820faa1a59, type: 3}
-  m_Name: HeightMapSettings
+  m_Script: {fileID: 11500000, guid: dadb93cb9fd2fd54d931f53402113fb1, type: 3}
+  m_Name: HeightMapData
   m_EditorClassIdentifier: 
-  autoUpdate: 0
+  autoUpdate: 1
   noiseSettings:
     normalizeMode: 1
-    scale: 350
-    octaves: 6
-    persistance: 0.443
-    lacunarity: 2.3
+    scale: 40.93
+    octaves: 3
+    persistance: 0.136
+    lacunarity: 0.66
     seed: 0
     offset: {x: 0, y: 0}
   applyFalloffMap: 0
-  heightMultiplier: 64.4
+  heightMultiplier: 200
   heightCurve:
     serializedVersion: 2
     m_Curve:
@@ -36,22 +36,13 @@ MonoBehaviour:
       inWeight: 0
       outWeight: 0
     - serializedVersion: 3
-      time: 0.20244987
-      value: 0.0037944466
-      inSlope: 0
-      outSlope: 0
+      time: 0.6861563
+      value: 0.76633227
+      inSlope: 2.0537524
+      outSlope: 2.0537524
       tangentMode: 0
       weightedMode: 0
-      inWeight: 0.34420118
-      outWeight: 0.33333334
-    - serializedVersion: 3
-      time: 0.47157708
-      value: 0.30516642
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.54767406
+      inWeight: 0.11341866
       outWeight: 0.33333334
     - serializedVersion: 3
       time: 1

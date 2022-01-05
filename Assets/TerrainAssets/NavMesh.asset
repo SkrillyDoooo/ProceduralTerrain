@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 93ca81bdf01d7bb4ea59cee36a05dff1, type: 3}
   m_Name: NavMesh
   m_EditorClassIdentifier: 
-  autoUpdate: 0
-  LOD: 6
-  passableHeightMin: 0.038
-  passableHeightMax: 0.247
+  autoUpdate: 1
+  LOD: 0
+  passableHeightMin: 0.058
+  passableHeightMax: 0.425

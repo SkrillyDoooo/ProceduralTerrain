@@ -2,10 +2,11 @@
 using System;
 using UnityEngine.AI;
 using System.Runtime.InteropServices.WindowsRuntime;
+using Unity.Profiling;
 
 public class TerrainChunk
 {
-    GameObject meshObject;
+    GameObject terrainObject;
     Vector2 sampleCenter;
     Bounds bounds;
 
@@ -13,9 +14,6 @@ public class TerrainChunk
 
     const float colliderGenerationDistanceThreshold = 5;
 
-    MeshRenderer meshRenderer;
-    MeshFilter meshFilter;
-    MeshCollider meshCollider;
     LODInfo[] detailLevels;
     LODMesh[] LODMeshes;
     int colliderLODIndex;
@@ -25,57 +23,61 @@ public class TerrainChunk
     HeightMap heightMap;
     bool heightMapReceived;
 
-    NavMap navMap;
+    TerrainGrid terrainGrid;
+    bool terrainGridReceived;
+
+    NavMapChunk navMap;
     bool navMapReceived;
     int previousLODIndex = -1;
 
-    MeshSettings meshSettings;
     HeightMapSettings heightMapSettings;
-    NavMapSettings navMapSettings;
+    TerrainGridSettings terrainGridSettings;
     Transform viewer;
-    Transform colliderPOI;
     float maxViewDst;
 
-    public TerrainChunk(Vector2 coord, HeightMapSettings heightMapSettings, MeshSettings meshSettings, NavMapSettings navMapSettings, LODInfo[] detailLevels, int colliderLODIndex, Material material, Transform viewer, Transform colliderPOI, Transform parentObjectEditorOnly)
+    NavigationNodePool navigationNodePool;
+
+    Renderer terrainGridTextureRenderer;
+
+    static readonly ProfilerMarker s_OnTerrainGridReceivedProfilerMarker = new ProfilerMarker("OnTerrainGridReceived");
+    static readonly ProfilerMarker s_OnHeightMapReceived = new ProfilerMarker("OnHeightMapReceived");
+    static readonly ProfilerMarker s_GetNavMap = new ProfilerMarker("GetNavMap");
+
+
+    public TerrainChunk(Vector2 coord, HeightMapSettings heightMapSettings, TerrainGridSettings gridSettings, LODInfo[] detailLevels, int colliderLODIndex, Material material, Transform viewer, Transform parentObjectEditorOnly, NavigationNodePool navigationNodePool, GameObject terrainPrefab)
     {
         this.coordinate = coord;
         this.detailLevels = detailLevels;
-        float meshWorldSize = meshSettings.meshWorldSize;
-        sampleCenter = coord * meshWorldSize / meshSettings.meshScale;
-        Vector2 position = coordinate * meshWorldSize;
-        bounds = new Bounds(position, Vector2.one * meshWorldSize);
+        float terrainWorldSize = gridSettings.terrainWorldSize;
+        sampleCenter = coord * gridSettings.dimensions;
+        sampleCenter.x *= -1;
+        Vector2 position = coordinate * gridSettings.terrainWorldSize;
+        bounds = new Bounds(position, Vector2.one * terrainWorldSize);
         this.heightMapSettings = heightMapSettings;
-        this.meshSettings = meshSettings;
+        this.terrainGridSettings = gridSettings;
         this.viewer = viewer;
-        this.colliderPOI = colliderPOI;
 
-        this.navMapSettings = navMapSettings;
+        terrainObject = GameObject.Instantiate(terrainPrefab, new Vector3(position.x, 0, position.y), terrainPrefab.transform.rotation);
+        terrainObject.layer = LayerMask.NameToLayer("Terrain");
+        terrainGridTextureRenderer = terrainObject.GetComponent<Renderer>();
+        terrainObject.SetActive(true);
+        terrainObject.transform.localScale = Vector3.one * terrainWorldSize;
 
-        meshObject = new GameObject("Terrain Chunk");
-        meshObject.layer = LayerMask.NameToLayer("Terrain");
-        meshRenderer = meshObject.AddComponent<MeshRenderer>();
-        if(meshSettings.generateColliderAroundColliderPOI)
-            meshCollider = meshObject.AddComponent<MeshCollider>();
-        meshFilter = meshObject.AddComponent<MeshFilter>();
         this.colliderLODIndex = colliderLODIndex;
         hasSetCollider = false;
+        this.navigationNodePool = navigationNodePool;
 
-        meshRenderer.material = material;
-        meshObject.transform.position = new Vector3(position.x, 0, position.y);
 #if UNITY_EDITOR
-            meshObject.transform.parent = parentObjectEditorOnly.transform;
+        terrainObject.transform.parent = parentObjectEditorOnly.transform;
 #endif
         SetVisible(false);
 
-        LODMeshes = new LODMesh[detailLevels.Length];
-
-        for (int i = 0; i < detailLevels.Length; i++)
-        {
-            LODMeshes[i] = new LODMesh(detailLevels[i].lod);
-            LODMeshes[i].updateCallback += UpdateTerrainChunk;
-            if (i == colliderLODIndex)
-                LODMeshes[i].updateCallback += UpdateCollisionMesh;
-        }
+        // LODMeshes = new LODMesh[detailLevels.Length];
+        //  for (int i = 0; i < detailLevels.Length; i++)
+        // {
+        //     LODMeshes[i] = new LODMesh(detailLevels[i].lod);
+        //     LODMeshes[i].updateCallback += UpdateTerrainChunk;
+        // }
 
         maxViewDst = detailLevels[detailLevels.Length - 1].visibleDistanceThreshold;
     }
@@ -88,7 +90,7 @@ public class TerrainChunk
         }
     }
 
-    public bool TryGetNavMap(out NavMap nav)
+    public bool TryGetNavMap(out NavMapChunk nav)
     {
         nav = navMapReceived ? navMap : default;
         return navMapReceived   ;
@@ -103,44 +105,7 @@ public class TerrainChunk
 
     public Vector2Int GetHeightMapIndexAtPoint(Vector2 point)
     {
-        Vector3 topLeftVector = new Vector3(-1, 0, 1) * (meshSettings.meshWorldSize) / 2f;
-        Vector3 worldCenter = new Vector3(coordinate.x * meshSettings.meshWorldSize, 0, coordinate.y * meshSettings.meshWorldSize);
-        Vector3 topLeft = worldCenter + topLeftVector;
-        Vector3 worldPoint = new Vector3(point.x, 0, point.y);
-
-        Debug.DrawRay(topLeft, Vector3.up * 1000, Color.red);
-        Debug.DrawRay(worldCenter, Vector3.up * 1000, Color.green);
-
-        Vector3 worldPointTexCoord = (worldPoint - topLeft);
-        Vector3 worldPointDebugRayStart = (Vector3.up * 200) + topLeft;
-        Vector3 worldPointDebugRayDir = ((Vector3.up * 200) + worldPoint) - worldPointDebugRayStart;
-        Debug.DrawRay(worldPointDebugRayStart, worldPointDebugRayDir, Color.magenta);
-
-        int x = Mathf.RoundToInt((Mathf.Clamp01(worldPointTexCoord.x / meshSettings.meshWorldSize) * (heightMap.values.GetLength(0) - 1)));
-        int y = Mathf.RoundToInt((Mathf.Clamp01(-worldPointTexCoord.z / meshSettings.meshWorldSize) * (heightMap.values.GetLength(1) - 1)));
-
-        return new Vector2Int(x, y);
-    }
-
-    public Vector2Int GetNavMapIndexAtPoint(Vector2 point)
-    {
-        Vector3 topLeftVector = new Vector3(-1, 0, 1) * (meshSettings.meshWorldSize) / 2f;
-        Vector3 worldCenter = new Vector3(coordinate.x * meshSettings.meshWorldSize, 0,coordinate.y * meshSettings.meshWorldSize);
-        Vector3 topLeft = worldCenter + topLeftVector;
-        Vector3 worldPoint = new Vector3(point.x, 0, point.y);
-
-        Debug.DrawRay(topLeft, Vector3.up * 1000, Color.red);
-        Debug.DrawRay(worldCenter, Vector3.up * 1000, Color.green);
-
-        Vector3 worldPointTexCoord = (worldPoint - topLeft);
-        Vector3 worldPointDebugRayStart = (Vector3.up * 200) + topLeft;
-        Vector3 worldPointDebugRayDir = ((Vector3.up * 200) + worldPoint) - worldPointDebugRayStart;
-        Debug.DrawRay(worldPointDebugRayStart, worldPointDebugRayDir, Color.magenta);
-
-        int x = Mathf.RoundToInt((Mathf.Clamp01(worldPointTexCoord.x / meshSettings.meshWorldSize) * (navMap.values.GetLength(0) - 1)));
-        int y = Mathf.RoundToInt((Mathf.Clamp01(-worldPointTexCoord.z / meshSettings.meshWorldSize) * (navMap.values.GetLength(1) - 1)));
-
-        return new Vector2Int(x, y);
+        return Vector2Int.zero;
     }
 
     public float GetHeightAtCoord(Vector2 point)
@@ -150,40 +115,51 @@ public class TerrainChunk
         return value;
     }
 
-    Vector2 colliderPOIPosition
-    {
-        get
-        {
-            return new Vector2(colliderPOI.localPosition.x, colliderPOI.localPosition.z);
-        }
-    }
-
     public void Load()
     {
         ThreadedDataRequester.RequestData(
-            () => HeightMapGenerator.GenerateHeightMap(meshSettings.numberOfVerticiesPerLine, meshSettings.numberOfVerticiesPerLine, heightMapSettings, sampleCenter)
+            () => HeightMapGenerator.GenerateHeightMap(terrainGridSettings.dimensions, terrainGridSettings.dimensions, heightMapSettings, sampleCenter)
             , OnHeightMapReceived);
     }
 
     void OnHeightMapReceived(object heightMapObject)
     {
+        s_OnHeightMapReceived.Begin();
         this.heightMap = (HeightMap)heightMapObject;
         heightMapReceived = true;
-        ThreadedDataRequester.RequestData(() => NavMapGenerator.GenerateNavMap(heightMap.values, heightMapSettings.maxHeight , navMapSettings, new Vector2Int((int)coordinate.x, (int)coordinate.y)), OnNavMapReceived);
+        ThreadedDataRequester.RequestData(() => TerrainGridGenerator.GenerateTerrainGridFromHeightMap(heightMap.values, terrainGridSettings, heightMapSettings.maxHeight), OnTerrainGridReceived);
 
         UpdateTerrainChunk();
+        s_OnHeightMapReceived.End();
+    }
+
+    void OnTerrainGridReceived(object terrainGridObject)
+    {
+        s_OnTerrainGridReceivedProfilerMarker.Begin();
+        this.terrainGrid = (TerrainGrid)terrainGridObject;
+        terrainGridReceived = true;
+        ThreadedDataRequester.RequestDataThreadPool(() => GetNavMapChunk(), OnNavMapReceived);
+        terrainGridTextureRenderer.material.mainTexture = TextureGenerator.TextureFromTerrainGrid(terrainGrid);
+        UpdateTerrainChunk();
+        s_OnTerrainGridReceivedProfilerMarker.End();
+    }
+
+    NavMapChunk GetNavMapChunk()
+    {
+        s_GetNavMap.Auto();
+        return new NavMapChunk(terrainGrid.values, terrainGridSettings.dimensions, new Vector2Int((int)coordinate.x,(int) coordinate.y), navigationNodePool);
     }
 
     void OnNavMapReceived(object navMapObject)
     {
-        this.navMap = (NavMap)navMapObject;
+        this.navMap = (NavMapChunk)navMapObject;
         navMapReceived = true;
     }
 
-    void OnMeshDataReceived(MeshData meshData)
-    {
-        meshFilter.mesh = meshData.CreateMesh();
-    }
+    // void OnMeshDataReceived(MeshData meshData)
+    // {
+    //     meshFilter.mesh = meshData.CreateMesh();
+    // }
 
     public void UpdateTerrainChunk()
     {
@@ -206,19 +182,23 @@ public class TerrainChunk
                         break;
                 }
 
-                if (lodIndex != previousLODIndex)
-                {
-                    LODMesh lodMesh = LODMeshes[lodIndex];
-                    if (lodMesh.hasMesh)
-                    {
-                        previousLODIndex = lodIndex;
-                        meshFilter.mesh = lodMesh.mesh;
-                    }
-                    else if (!lodMesh.hasRequestedMesh)
-                    {
-                        lodMesh.RequestMesh(heightMap, meshSettings);
-                    }
-                }
+
+
+                //perform lodding
+
+                // if (lodIndex != previousLODIndex)
+                // {
+                //     LODMesh lodMesh = LODMeshes[lodIndex];
+                //     if (lodMesh.hasMesh)
+                //     {
+                //         previousLODIndex = lodIndex;
+                //         meshFilter.mesh = lodMesh.mesh;
+                //     }
+                //     else if (!lodMesh.hasRequestedMesh)
+                //     {
+                //         lodMesh.RequestMesh(heightMap, meshSettings);
+                //     }
+                // }
             }
 
 
@@ -232,39 +212,14 @@ public class TerrainChunk
         }
     }
 
-    public void UpdateCollisionMesh()
-    {
-        if (!meshSettings.generateColliderAroundColliderPOI || hasSetCollider)
-            return;
-
-        float sqrDstFromColliderPOIToEdge = bounds.SqrDistance(colliderPOIPosition);
-
-        if (sqrDstFromColliderPOIToEdge < detailLevels[colliderLODIndex].sqrVisibleDstThrehold)
-        {
-            if (!LODMeshes[colliderLODIndex].hasRequestedMesh)
-            {
-                LODMeshes[colliderLODIndex].RequestMesh(heightMap, meshSettings);
-            }
-        }
-
-        if (sqrDstFromColliderPOIToEdge < colliderGenerationDistanceThreshold * colliderGenerationDistanceThreshold)
-        {
-            if (LODMeshes[colliderLODIndex].hasMesh)
-            {
-                meshCollider.sharedMesh = LODMeshes[colliderLODIndex].mesh;
-                hasSetCollider = true;
-            }
-        }
-    }
-
     public void SetVisible(bool visible)
     {
-        meshObject.SetActive(visible);
+        terrainGridTextureRenderer.enabled = visible;
     }
 
     public bool IsVisible()
     {
-        return meshObject.activeSelf;
+        return terrainGridTextureRenderer.enabled;
     }
 }
 

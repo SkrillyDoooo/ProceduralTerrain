@@ -9,27 +9,40 @@ public class ThreadedDataRequester : MonoBehaviour
     static ThreadedDataRequester instance;
     Queue<ThreadInfo> dataQueue = new Queue<ThreadInfo>();
 
+    struct ThreadContext
+    {
+        public Func<object> generateData;
+        public Action<object> callback;
+    }
+
     void Awake()
     {
         instance = FindObjectOfType<ThreadedDataRequester>();
+        ThreadPool.SetMaxThreads(16,16);
     }
 
     public static void RequestData(Func<object> generateData, Action<object> callback)
     {
         ThreadStart threadStart = delegate
         {
-            instance.DataThread(generateData, callback);
+            instance.DataThread(new ThreadContext(){generateData = generateData, callback = callback});
         };
 
         new Thread(threadStart).Start();
     }
 
-    void DataThread(Func<object> generateData, Action<object> callback)
+    public static void RequestDataThreadPool(Func<object> generateData, Action<object> callback)
     {
-        object data = generateData(); 
+        ThreadPool.QueueUserWorkItem(new WaitCallback(instance.DataThread), new ThreadContext(){generateData = generateData, callback = callback});
+    }
+
+    void DataThread(object threadContext)
+    {
+        ThreadContext context = (ThreadContext) threadContext;
+        object data = context.generateData(); 
         lock (dataQueue)
         {
-            dataQueue.Enqueue(new ThreadInfo(callback, data));
+            dataQueue.Enqueue(new ThreadInfo(context.callback, data));
         }
     }
 
